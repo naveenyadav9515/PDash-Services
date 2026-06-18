@@ -1,13 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Connect to MongoDB
+connectDB();
+
 // Enable CORS for frontend communication
 app.use(cors({
-  origin: '*', // Allows access from any origin (frontend, mobile apps, etc.)
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -21,7 +25,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Hello World API Endpoint
+// Routes
 app.get('/api/hello', (req, res) => {
   res.json({
     status: 'success',
@@ -29,6 +33,8 @@ app.get('/api/hello', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+app.use('/api/features', require('./routes/features'));
 
 // Fallback Route for Undefined Paths
 app.use((req, res) => {
@@ -42,4 +48,5 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 PDash-Services running on port ${PORT}`);
   console.log(`👉 Test endpoint: http://localhost:${PORT}/api/hello`);
+  console.log(`👉 Features API:  http://localhost:${PORT}/api/features`);
 });
