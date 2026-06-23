@@ -15,21 +15,25 @@ router.get('/', async (req, res) => {
 // POST /api/features/seed — Seed initial sample data
 router.post('/seed', async (req, res) => {
   try {
-    const existing = await Feature.countDocuments();
-    if (existing > 0) {
-      return res.json({ status: 'skipped', message: `Database already has ${existing} features. Delete them first to re-seed.` });
-    }
+    // Clear existing features to allow clean re-seeding
+    await Feature.deleteMany({});
 
     const sampleFeatures = [
-      { name: 'Finance Tracker', description: 'Track income, expenses and budgets', icon: 'account_balance', enabled: true },
-      { name: 'Task Manager', description: 'Manage your daily to-do lists', icon: 'task_alt', enabled: true },
       { name: 'Notes', description: 'Quick notes and bookmarks', icon: 'sticky_note_2', enabled: true },
-      { name: 'Calendar', description: 'Schedule and plan events', icon: 'calendar_month', enabled: true },
-      { name: 'Health Log', description: 'Track fitness and health metrics', icon: 'monitor_heart', enabled: false }
+      { name: 'Kitchen', description: 'Track utility levels like gas, water, and power', icon: 'countertops', enabled: true },
+      { name: 'Finance Tracker', description: 'Track income, expenses, and budgets', icon: 'account_balance', enabled: true },
+      { name: 'Travel', description: 'Journal past journeys and plan future trips', icon: 'flight_takeoff', enabled: true },
+      { name: 'Reminders', description: 'Central console for automated and manual alerts', icon: 'notifications_active', enabled: true },
+      { name: 'Purchases', description: 'Track savings goals and big purchase plans', icon: 'shopping_bag', enabled: true },
+      { name: 'Kirana', description: 'Plan weekly grocery shopping lists', icon: 'shopping_cart', enabled: true },
+      { name: 'Plans', description: 'Organize social plans and events with family', icon: 'event', enabled: true },
+      { name: 'Rules', description: 'Rule of the Day flip cards and guidelines', icon: 'gavel', enabled: true },
+      { name: 'Movies', description: 'Track watchlist status boards and ratings', icon: 'movie', enabled: true },
+      { name: 'Streak Loggers', description: 'Track daily consistency streaks and activities', icon: 'grid_on', enabled: true }
     ];
 
     const created = await Feature.insertMany(sampleFeatures);
-    res.status(201).json({ status: 'success', message: `Seeded ${created.length} features`, data: created });
+    res.status(201).json({ status: 'success', message: `Successfully seeded ${created.length} features`, data: created });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
