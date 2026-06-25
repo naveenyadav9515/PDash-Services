@@ -4,9 +4,9 @@
 
 ---
 
-## Epic 15.1: Review
+## Epic 17.1: Review
 
-### Feature 15.1.1: Security Audit
+### Feature 17.1.1: Security Audit
 - [ ] Resolve all `npm audit` warnings
 - [ ] Review all route RBAC configurations
 - [ ] Finalize JSDoc/Swagger coverage

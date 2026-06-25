@@ -4,14 +4,14 @@
 
 ---
 
-## Epic 8.1: Removal Operations
+## Epic 11.1: Removal Operations
 
-### Feature 8.1.1: Operation 1 & 2 (References)
+### Feature 11.1.1: Operation 1 & 2 (References)
 - [ ] Implement `removeModuleFromWorkspace(userId, workspaceId, moduleId)` — Operation 1 (delete single reference)
 - [ ] Implement `removeModuleFromAllWorkspaces(userId, moduleId)` — Operation 2 (delete all references for this user/module)
 - [ ] Expose routes in `workspace-module-ref.routes.js`
 
-### Feature 8.1.2: Operation 3 (Clear Data)
+### Feature 11.1.2: Operation 3 (Clear Data)
 - [ ] Implement `clearModuleData(userId, moduleId)` in `module-data.service.js`
 - [ ] Delete `ModuleSettings` and `WidgetConfig` for this user/module
 - [ ] Provide hooks for individual modules to delete their specific `ModuleData` collections
@@ -20,9 +20,9 @@
 
 ---
 
-## Epic 8.2: Reordering
+## Epic 11.2: Reordering
 
-### Feature 8.2.1: Sorting APIs
+### Feature 11.2.1: Sorting APIs
 - [ ] Implement `reorderModulesInWorkspace(userId, workspaceId, orderedModuleIds)`
 - [ ] Validate all IDs belong to the workspace
 - [ ] Update `sortOrder` in batch

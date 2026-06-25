@@ -104,9 +104,9 @@
 
 ---
 
-## Epic 12.1: Unit Testing
+## Epic 1.6: Unit Testing
 
-### Feature 12.1.1: Setup & Service Tests
+### Feature 1.6.1: Setup & Service Tests
 - [ ] Configure Jest with code coverage reporting
 - [ ] Test Workspace service (CRUD, limit enforcement)
 - [ ] Test Reference service (batch assign)
@@ -114,9 +114,9 @@
 
 ---
 
-## Epic 12.2: Integration Testing
+## Epic 1.7: Integration Testing
 
-### Feature 12.2.1: API Tests
+### Feature 1.7.1: API Tests
 - [ ] Setup `mongodb-memory-server`
 - [ ] Test Auth endpoints (login, register, RBAC)
 - [ ] Test Workspace endpoints
