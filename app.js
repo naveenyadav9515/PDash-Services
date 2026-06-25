@@ -4,7 +4,6 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
 connectDB();
@@ -44,9 +43,4 @@ app.use((req, res) => {
   });
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 PDash-Services running on port ${PORT}`);
-  console.log(`👉 Test endpoint: http://localhost:${PORT}/api/hello`);
-  console.log(`👉 Features API:  http://localhost:${PORT}/api/features`);
-});
+module.exports = app;
