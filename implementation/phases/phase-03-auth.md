@@ -80,3 +80,17 @@
 - [ ] `registerSchema` — validate: email (valid format), password (min 8 chars), firstName (required), lastName (required)
 - [ ] `loginSchema` — validate: email (required), password (required)
 - [ ] `switchSchema` — validate: userId (valid MongoDB ObjectId)
+
+---
+
+## Epic 3.6: Transactional Email Service
+
+### Feature 3.6.1: Email Infrastructure
+- [ ] Install `nodemailer`
+- [ ] Create `services/email.service.js`
+- [ ] Configure SMTP transport (e.g., SendGrid, AWS SES)
+- [ ] Create basic HTML templates for common emails (Welcome, Password Reset)
+
+### Feature 3.6.2: Password Reset API
+- [ ] `POST /api/v1/auth/forgot-password` — generate reset token (valid for 15 mins), save hashed token to DB, send email
+- [ ] `PATCH /api/v1/auth/reset-password/:token` — verify token, hash new password, save, and log user in automatically
