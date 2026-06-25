@@ -27,6 +27,11 @@
 | 13 | [DevOps & CI/CD](./phases/phase-13-devops.md) | 🔲 Not Started | Docker, GitHub Actions, graceful shutdown |
 | 14 | [Performance & Monitoring](./phases/phase-14-performance.md) | 🔲 Not Started | Compression, caching, metrics |
 | 15 | [Polish & Hardening](./phases/phase-15-polish.md) | 🔲 Not Started | Security audit, code quality, documentation |
+| 16 | [AI Insights & Data Synthesis](./phases/phase-16-ai-insights.md) | 🔲 Not Started | Cross-module data aggregation and LLM integration |
+| 17 | [Notifications & Real-Time Sync](./phases/phase-17-notifications.md) | 🔲 Not Started | WebSockets and Web Push API |
+| 18 | [File Storage & Media Mgt](./phases/phase-18-file-storage.md) | 🔲 Not Started | S3/Cloud storage and Multer setup |
+| 19 | [Offline-First Architecture](./phases/phase-19-offline-sync.md) | 🔲 Not Started | Conflict resolution and sync APIs |
+| 20 | [Localization & Data Export](./phases/phase-20-localization-export.md) | 🔲 Not Started | i18n readiness and data takeout generation |
 | Future | [Individual Module Implementations](./phases/phase-future-modules.md) | 🔲 Not Started | F1–F12 module-specific APIs |
 
 ---
