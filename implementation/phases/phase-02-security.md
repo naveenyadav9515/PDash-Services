@@ -76,3 +76,14 @@
 - [ ] Create workflow: PR triggers lint + test + audit
 - [ ] Create workflow: Merge to `main` builds and pushes image
 - [ ] Enforce branch protection rules
+
+---
+
+## Epic 13.3: Disaster Recovery & Backups
+
+### Feature 13.3.1: Automated DB Backups
+- [ ] Create a Cron Job script (`scripts/backup-db.js`)
+- [ ] Execute `mongodump` to extract all MongoDB collections
+- [ ] Encrypt the dump archive using AES-256
+- [ ] Upload the encrypted archive to a secure Cloud Storage bucket (e.g., AWS S3)
+- [ ] Configure backup frequency (e.g., daily at 3:00 AM) and retention policy (keep last 30 days)
