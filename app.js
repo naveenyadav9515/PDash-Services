@@ -3,6 +3,9 @@ const cors = require('cors');
 const config = require('./config/index');
 const logger = require('./config/logger');
 const requestLogger = require('./middleware/request-logger');
+const correlationIdMiddleware = require('./middleware/correlation-id');
+const errorHandler = require('./middleware/error-handler');
+const AppError = require('./utils/AppError');
 
 const app = express();
 
@@ -19,6 +22,9 @@ app.use(cors({
 // Parse JSON request bodies
 app.use(express.json());
 
+// Generate Unique Request ID
+app.use(correlationIdMiddleware);
+
 // Request Logger Middleware (Morgan + Winston)
 app.use(requestLogger);
 
@@ -34,11 +40,11 @@ app.get('/api/hello', (req, res) => {
 app.use('/api/features', require('./routes/features'));
 
 // Fallback Route for Undefined Paths
-app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: 'Route not found'
-  });
+app.use((req, res, next) => {
+  next(AppError.notFound(`Route ${req.originalUrl}`));
 });
+
+// Global Error Handling Middleware
+app.use(errorHandler);
 
 module.exports = app;
