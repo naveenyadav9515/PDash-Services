@@ -1,4 +1,4 @@
-# Phase 7: Module Screen — Fixed Cards & User Widgets (Backend)
+# Phase 10: Module Screen — Fixed Cards & User Widgets (Backend)
 
 > Data structures to support individual module screens, their settings, and user widget configurations.
 

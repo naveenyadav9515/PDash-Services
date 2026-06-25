@@ -1,4 +1,4 @@
-# Phase 19: Offline-First Architecture (Backend)
+# Phase 6: Offline-First Architecture (Backend)
 
 > Backend support for optimistic UI and sync conflict resolution.
 

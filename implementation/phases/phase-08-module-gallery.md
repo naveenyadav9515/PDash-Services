@@ -1,4 +1,4 @@
-# Phase 5: Module System & Module Gallery (Backend)
+# Phase 8: Module System & Module Gallery (Backend)
 
 > The catalog of available modules and the API to serve them to the Module Gallery.
 
