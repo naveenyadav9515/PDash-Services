@@ -1,4 +1,4 @@
-# Phase 4: Workspace System (Backend)
+# Phase 7: Workspace System (Backend)
 
 > Core collection for organizing modules. Workspace CRUD, sorting, and config-driven limits.
 

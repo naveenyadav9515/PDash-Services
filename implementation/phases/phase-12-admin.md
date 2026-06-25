@@ -1,4 +1,4 @@
-# Phase 10: User Management, Settings & Admin (Backend)
+# Phase 12: User Management, Settings & Admin (Backend)
 
 > Profile updates, admin dashboard APIs, and global configuration.
 

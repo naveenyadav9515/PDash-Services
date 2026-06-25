@@ -1,4 +1,4 @@
-# Phase 17: Notifications & Real-Time Sync (Backend)
+# Phase 4: Notifications & Real-Time Sync (Backend)
 
 > WebSockets for cross-device syncing and Web Push API for notifications.
 

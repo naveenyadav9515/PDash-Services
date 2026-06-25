@@ -1,4 +1,4 @@
-# Phase 9: Global Search (Backend)
+# Phase 13: Global Search (Backend)
 
 > API for searching across all entities.
 
