@@ -73,10 +73,9 @@
 ## Epic 13.2: Pipelines
 
 ### Feature 13.2.1: GitHub Actions & Environments
-- [ ] Workflow 1 (Staging): Merge from `feature/*` to `staging` builds image and auto-deploys to **Staging URL** (Testing with separate DB)
-- [ ] Workflow 2 (Production): Merge from `feature/*` to `main` builds production image and auto-deploys to **Prod URL**
-- [ ] Workflow 3 (DB Sync): Script to safely overwrite Staging DB with Prod DB data for realistic testing (`npm run sync-db-to-staging`)
-- [ ] Enforce branch protection rules on `main`
+- [ ] Workflow 1 (Staging): Merge from `feature/*` to `staging` builds image, deploys to **Staging URL**, executes automated Prod-to-Staging DB sync script, and auto-deletes the feature branch
+- [ ] Workflow 2 (Production): Merge from `staging` to `release` builds production image and auto-deploys to **Prod URL**
+- [ ] Enforce branch protection rules on `release` and `staging`
 
 ---
 
