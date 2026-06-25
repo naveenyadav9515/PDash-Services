@@ -29,3 +29,14 @@ Treat Git like a "Save Game" state in a video game.
 We explicitly moved DevOps to **Phase 2**. 
 *   Every time you merge a feature branch into `main`, GitHub Actions will automatically run the linter and the test suite. 
 *   If the AI left behind broken syntax or regressions, the CI pipeline will block the merge, protecting your production environment.
+
+---
+
+## 6. Strict Directives for the AI Assistant (Self-Correction Rules)
+*The AI is required to read and obey these rules before processing any code requests:*
+
+1.  **Read the Blueprint First:** The AI must *always* use `view_file` to read the specific `phase-XX.md` file before generating code. Never guess the architecture.
+2.  **Verify Existing Context:** The AI must check existing Data Models and Schemas before writing new business logic to ensure exact property name matches.
+3.  **No Unprompted Refactoring:** The AI must strictly solve the active Epic. It is strictly forbidden from "cleaning up" or refactoring unrelated files, as this risks breaking hidden dependencies.
+4.  **One Feature at a Time:** The AI must not attempt to build an entire Phase at once. Write the code for a single Feature, verify it works, instruct the user to `git commit`, and then move to the next.
+5.  **Stop on Ambiguity:** If a user request conflicts with the `implementation_plan.md`, the AI must stop coding and ask for explicit clarification.
