@@ -73,10 +73,10 @@
 ## Epic 13.2: Pipelines
 
 ### Feature 13.2.1: GitHub Actions & Environments
-- [ ] Workflow 1 (PRs): PR to `develop` triggers lint + test + audit
-- [ ] Workflow 2 (Staging): Merge to `develop` builds image and auto-deploys to the **Dev/Staging URL** for QA testing
-- [ ] Workflow 3 (Production): Merge from `develop` to `main` builds production image and auto-deploys to the **Prod URL**
-- [ ] Enforce branch protection rules on both `main` and `develop`
+- [ ] Workflow 1 (Staging): Merge from `feature/*` to `staging` builds image and auto-deploys to **Staging URL** (Testing with separate DB)
+- [ ] Workflow 2 (Production): Merge from `feature/*` to `main` builds production image and auto-deploys to **Prod URL**
+- [ ] Workflow 3 (DB Sync): Script to safely overwrite Staging DB with Prod DB data for realistic testing (`npm run sync-db-to-staging`)
+- [ ] Enforce branch protection rules on `main`
 
 ---
 
