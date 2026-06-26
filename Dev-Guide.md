@@ -16,7 +16,7 @@ To maintain fast feedback loops, run the dev server locally with hot-reloading u
 1. Create a local environment file named `.env` in this directory (`PDash-Services`). Do **not** commit this file to Git.
    ```env
    PORT=5000
-   MONGO_URI=mongodb+srv://MrFoxDB:MrFoxDB@mrfox-db.fyatkdt.mongodb.net/lumina_db?retryWrites=true&w=majority&appName=MrFox-DB
+   MONGO_URI=mongodb+srv://MrFoxDB:MrFoxDB@mrfox-db.fyatkdt.mongodb.net/PDashDB?retryWrites=true&w=majority&appName=MrFox-DB
    ```
 2. Install dependencies:
    ```bash
