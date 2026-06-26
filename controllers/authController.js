@@ -140,6 +140,6 @@ exports.googleAuth = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Google Auth Error:', error);
-    res.status(401).json({ status: 'error', message: 'Invalid Google Token' });
+    res.status(401).json({ status: 'error', message: `Google Error: ${error.message}` });
   }
 };
