@@ -60,6 +60,7 @@ app.get('/api/hello', (req, res) => {
 
 app.use('/api/features', require('./routes/features'));
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/expenses', require('./routes/expenses'));
 // Fallback Route for Undefined Paths
 app.use((req, res, next) => {
   next(AppError.notFound(`Route ${req.originalUrl}`));
