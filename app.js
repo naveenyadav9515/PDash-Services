@@ -17,6 +17,9 @@ const swaggerSpec = require('./config/swagger');
 
 const app = express();
 
+// Trust reverse proxy (required for Render/Heroku to get real client IP for rate limiting)
+app.set('trust proxy', 1);
+
 // Mount Swagger Documentation UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
