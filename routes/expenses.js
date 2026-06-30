@@ -11,6 +11,7 @@ router.get('/summary', expenseController.getExpenseSummary);
 router.get('/pending', expenseController.getPendingTransactions);
 router.post('/pending/simulate', expenseController.simulateAutoLog);
 router.post('/pending/:id', expenseController.processPendingTransaction);
+router.post('/sync', expenseController.syncExpenses);
 
 router.route('/')
   .post(expenseController.createExpense)

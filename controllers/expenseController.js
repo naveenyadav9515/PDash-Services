@@ -222,3 +222,20 @@ exports.simulateAutoLog = async (req, res, next) => {
     next(error);
   }
 };
+
+// On-demand or On-load synchronization of emails (Alternative to Pub/Sub)
+exports.syncExpenses = async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id).select('+googleRefreshToken');
+    
+    if (user && user.gmailConnected && user.googleRefreshToken) {
+      const { syncRecentBankEmails } = require('./webhooksController');
+      await syncRecentBankEmails(user);
+    }
+    
+    res.status(200).json({ status: 'success', message: 'Sync complete' });
+  } catch (error) {
+    next(error);
+  }
+};
