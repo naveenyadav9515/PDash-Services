@@ -16,7 +16,8 @@
 
 ## Epic F3: Expense Tracker
 > See full spec: `../modules/F3-expense-tracker.md`
-- [ ] Feature: Transactions & Pending Queue schema
+- [x] **Completed** - Feature: Transactions & Pending Queue schema
+- [x] **Completed** - Feature: Simulated Auto-Log (Email Parsing alternative)
 - [ ] Feature: Gmail API & Parsing integration (Optional Automation)
 - [ ] Feature: Budget & Analytics APIs
 

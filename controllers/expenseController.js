@@ -1,10 +1,19 @@
 const Expense = require('../models/Expense');
+const PendingTransaction = require('../models/PendingTransaction');
 
-/**
- * @desc    Create a new expense
- * @route   POST /api/expenses
- * @access  Private
- */
+exports.getExpenses = async (req, res, next) => {
+  try {
+    const expenses = await Expense.find({ user: req.user.id }).sort({ date: -1 });
+    res.status(200).json({
+      status: 'success',
+      count: expenses.length,
+      data: expenses
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.createExpense = async (req, res, next) => {
   try {
     const { amount, category, merchant, tags, notes, date, paymentMethod } = req.body;
@@ -19,7 +28,7 @@ exports.createExpense = async (req, res, next) => {
       date,
       paymentMethod
     });
-    
+
     res.status(201).json({
       status: 'success',
       data: expense
@@ -29,30 +38,6 @@ exports.createExpense = async (req, res, next) => {
   }
 };
 
-/**
- * @desc    Get all expenses for current user
- * @route   GET /api/expenses
- * @access  Private
- */
-exports.getExpenses = async (req, res, next) => {
-  try {
-    const expenses = await Expense.find({ user: req.user.id }).sort('-date');
-    
-    res.status(200).json({
-      status: 'success',
-      results: expenses.length,
-      data: expenses
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * @desc    Get expense summary (stats for dashboard widget)
- * @route   GET /api/expenses/summary
- * @access  Private
- */
 exports.getExpenseSummary = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -154,6 +139,84 @@ exports.getExpenseSummary = async (req, res, next) => {
           text: `You're spending 28% more on ${topCat} compared to your monthly average.`
         }
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getPendingTransactions = async (req, res, next) => {
+  try {
+    const pending = await PendingTransaction.find({ user: req.user.id, status: 'Pending' }).sort({ date: -1 });
+    res.status(200).json({
+      status: 'success',
+      count: pending.length,
+      data: pending
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.processPendingTransaction = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { action, ...expenseData } = req.body; // action: 'approve' or 'ignore'
+
+    const pending = await PendingTransaction.findOne({ _id: id, user: req.user.id });
+    if (!pending) {
+      return res.status(404).json({ status: 'error', message: 'Pending transaction not found' });
+    }
+
+    if (action === 'ignore') {
+      pending.status = 'Rejected';
+      await pending.save();
+      return res.status(200).json({ status: 'success', message: 'Transaction ignored' });
+    }
+
+    if (action === 'approve') {
+      pending.status = 'Approved';
+      await pending.save();
+
+      // Create actual expense
+      const expense = await Expense.create({
+        user: req.user.id,
+        amount: expenseData.amount || pending.amount,
+        merchant: expenseData.merchant || pending.merchant,
+        category: expenseData.category || pending.category,
+        paymentMethod: expenseData.paymentMethod || pending.paymentMethod,
+        date: pending.date,
+        tags: expenseData.tags || pending.tags,
+        notes: expenseData.notes || pending.notes
+      });
+
+      return res.status(201).json({ status: 'success', data: expense });
+    }
+
+    res.status(400).json({ status: 'error', message: 'Invalid action' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Automatic log feature simulator (Mocking Gmail parser)
+exports.simulateAutoLog = async (req, res, next) => {
+  try {
+    const { amount, merchant, paymentMethod, date } = req.body;
+    
+    // Simulate parsing email to a pending transaction
+    const pending = await PendingTransaction.create({
+      user: req.user.id,
+      amount: amount || Math.floor(Math.random() * 1000) + 100,
+      merchant: merchant || 'Simulated Merchant',
+      paymentMethod: paymentMethod || 'UPI',
+      date: date || new Date(),
+      status: 'Pending'
+    });
+
+    res.status(201).json({
+      status: 'success',
+      data: pending
     });
   } catch (error) {
     next(error);

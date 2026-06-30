@@ -8,6 +8,10 @@ router.use(protect);
 
 router.get('/summary', expenseController.getExpenseSummary);
 
+router.get('/pending', expenseController.getPendingTransactions);
+router.post('/pending/simulate', expenseController.simulateAutoLog);
+router.post('/pending/:id', expenseController.processPendingTransaction);
+
 router.route('/')
   .post(expenseController.createExpense)
   .get(expenseController.getExpenses);

@@ -31,6 +31,22 @@ const userSchema = new mongoose.Schema({
     default: 'user',
   },
   avatarUrl: String,
+  gmailConnected: {
+    type: Boolean,
+    default: false,
+  },
+  googleRefreshToken: {
+    type: String,
+    select: false,
+  },
+  expenseAutomationEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  expenseAutomationBanks: {
+    type: [String],
+    default: [],
+  }
 }, { timestamps: true });
 
 // Pre-save hook to hash passwords before saving to the database

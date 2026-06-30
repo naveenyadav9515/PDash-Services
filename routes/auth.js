@@ -100,4 +100,8 @@ router.post('/login', loginUser);
  */
 router.post('/google', googleAuth);
 
+const { protect } = require('../middleware/auth');
+router.get('/google/url', protect, require('../controllers/authController').getGoogleAuthUrl);
+router.post('/google/connect', protect, require('../controllers/authController').connectGmail);
+
 module.exports = router;

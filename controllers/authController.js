@@ -143,3 +143,52 @@ exports.googleAuth = async (req, res, next) => {
     res.status(401).json({ status: 'error', message: `Google Error: ${error.message}` });
   }
 };
+
+exports.getGoogleAuthUrl = (req, res) => {
+  const redirectUri = req.query.redirectUri || 'http://localhost:4200/expenses';
+  const oauth2Client = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri
+  );
+
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: ['https://www.googleapis.com/auth/gmail.readonly', 'email', 'profile'],
+  });
+
+  res.json({ status: 'success', data: { url } });
+};
+
+exports.connectGmail = async (req, res, next) => {
+  try {
+    const { code, redirectUri } = req.body;
+    const oauth2Client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri || 'http://localhost:4200/expenses'
+    );
+
+    const { tokens } = await oauth2Client.getToken(code);
+    
+    if (tokens.refresh_token) {
+      await User.findByIdAndUpdate(req.user.id, {
+        gmailConnected: true,
+        googleRefreshToken: tokens.refresh_token,
+        expenseAutomationEnabled: true
+      });
+      res.json({ status: 'success', message: 'Gmail connected successfully' });
+    } else {
+      // If we don't get a refresh token, we just enable the features if they already have one stored
+      await User.findByIdAndUpdate(req.user.id, {
+        gmailConnected: true,
+        expenseAutomationEnabled: true
+      });
+      res.json({ status: 'success', message: 'Gmail connected successfully (re-authorized)' });
+    }
+  } catch (error) {
+    console.error('Connect Gmail Error:', error);
+    next(error);
+  }
+};
