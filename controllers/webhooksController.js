@@ -74,7 +74,59 @@ const syncRecentBankEmails = async (user) => {
         }
       }
 
-      if (extractedAmount === 0) extractedAmount = 100; 
+      // Extract exact date
+      const dateMatch = emailBody.match(/Date & Time:\s*(\d{2})-(\d{2})-(\d{2}),\s*(\d{2}):(\d{2}):(\d{2})/i);
+      if (dateMatch) {
+        const [_, day, month, year, hours, minutes, seconds] = dateMatch;
+        const fullYear = year.length === 2 ? `20${year}` : year;
+        extractedDate = new Date(`${fullYear}-${month}-${day}T${hours}:${minutes}:${seconds}+05:30`);
+      } else if (msgData.data.internalDate) {
+        extractedDate = new Date(parseInt(msgData.data.internalDate));
+      }
+
+      if (extractedAmount === 0) extractedAmount = 100;
+
+      // 1. Ignore transactions before June 30, 2026
+      const cutoffDate = new Date('2026-06-30T00:00:00+05:30');
+      if (extractedDate < cutoffDate) {
+        await gmail.users.messages.modify({
+          userId: 'me',
+          id: msg.id,
+          requestBody: { removeLabelIds: ['UNREAD'] }
+        });
+        continue; // Skip saving
+      }
+
+      // 2. Prevent Duplicates (match amount, merchant, and time within +/- 5 minutes)
+      const fiveMins = 5 * 60 * 1000;
+      const minDate = new Date(extractedDate.getTime() - fiveMins);
+      const maxDate = new Date(extractedDate.getTime() + fiveMins);
+
+      const Expense = require('../models/Expense');
+      
+      const duplicateExpense = await Expense.findOne({
+        user: user._id,
+        amount: extractedAmount,
+        merchant: extractedMerchant,
+        date: { $gte: minDate, $lte: maxDate }
+      });
+
+      const duplicatePending = await PendingTransaction.findOne({
+        user: user._id,
+        amount: extractedAmount,
+        merchant: extractedMerchant,
+        date: { $gte: minDate, $lte: maxDate }
+      });
+
+      if (duplicateExpense || duplicatePending) {
+        // Already exists, just mark email as read to prevent loop
+        await gmail.users.messages.modify({
+          userId: 'me',
+          id: msg.id,
+          requestBody: { removeLabelIds: ['UNREAD'] }
+        });
+        continue;
+      }
 
       await PendingTransaction.create({
         user: user._id,
