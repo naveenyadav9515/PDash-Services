@@ -173,11 +173,16 @@ exports.connectGmail = async (req, res, next) => {
     const { tokens } = await oauth2Client.getToken(code);
     
     if (tokens.refresh_token) {
-      await User.findByIdAndUpdate(req.user.id, {
+      const updatedUser = await User.findByIdAndUpdate(req.user.id, {
         gmailConnected: true,
         googleRefreshToken: tokens.refresh_token,
         expenseAutomationEnabled: true
-      });
+      }, { new: true }).select('+googleRefreshToken');
+      
+      // Perform initial sync of recent emails!
+      const { syncRecentBankEmails } = require('./webhooksController');
+      await syncRecentBankEmails(updatedUser);
+
       res.json({ status: 'success', message: 'Gmail connected successfully' });
     } else {
       // If we don't get a refresh token, we just enable the features if they already have one stored
