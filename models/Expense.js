@@ -39,9 +39,19 @@ const expenseSchema = new mongoose.Schema({
     type: String,
     enum: ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Net Banking', 'Other'],
     default: 'UPI',
+  },
+  gmailMessageId: {
+    type: String,
+    default: null,
+    index: true,
   }
 }, {
   timestamps: true,
 });
+
+expenseSchema.index(
+  { user: 1, gmailMessageId: 1 },
+  { unique: true, sparse: true, partialFilterExpression: { gmailMessageId: { $ne: null } } }
+);
 
 module.exports = mongoose.model('Expense', expenseSchema);

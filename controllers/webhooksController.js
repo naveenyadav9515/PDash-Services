@@ -1,8 +1,248 @@
 const User = require('../models/User');
 const PendingTransaction = require('../models/PendingTransaction');
+const Expense = require('../models/Expense');
 const { google } = require('googleapis');
 
-// Reusable logic to fetch and parse emails
+/**
+ * Comprehensive bank email amount extraction patterns.
+ * Supports Axis Bank, HDFC, SBI, ICICI, and generic UPI/NEFT/IMPS formats.
+ * Each pattern is tried in order; first successful match wins.
+ */
+const AMOUNT_PATTERNS = [
+  // "Amount Debited: INR 1,234.56" or "Amount Debited: Rs. 1,234.56"
+  /Amount\s*Debited\s*[:\-]?\s*(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "debited with INR 500.00" / "debited with Rs 500"
+  /debited\s+(?:with|for|by)\s+(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "INR 1234.56 has been debited" / "Rs. 1234 was debited"
+  /(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)\s+(?:has been|was|is)\s+debited/i,
+  // "debited by INR 500 from"
+  /debited\s+(?:by\s+)?(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)\s+from/i,
+  // "Transaction of INR 500" / "Transaction of Rs 500"
+  /(?:Transaction|Txn)\s+(?:of|for)\s+(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "Rs 500 debited" / "INR 500 debited" (simpler pattern)
+  /(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)\s+(?:debited|withdrawn)/i,
+  // "spent Rs. 500" / "spent INR 500"
+  /spent\s+(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // "Your a/c xxxxxxx debited for Rs 1234.56"
+  /a\/c\s*[xX*\d]+\s*(?:is\s+)?debited\s+(?:for|with)\s+(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+  // Generic: "INR 500.00" or "Rs.500" or "₹500" anywhere in email (last resort)
+  /(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
+];
+
+/**
+ * Comprehensive merchant/payee extraction patterns.
+ */
+const MERCHANT_PATTERNS = [
+  /Transaction\s*Info\s*[:\-]\s*(.+)/i,
+  /(?:Paid\s+to|Payee|Beneficiary|Merchant|To)\s*[:\-]\s*(.+)/i,
+  /(?:UPI|IMPS|NEFT)\s*[/\-]\s*(.+)/i,
+  /(?:at|@)\s+([A-Za-z][\w\s&.-]+)/i,
+];
+
+/**
+ * Date extraction patterns for bank emails.
+ */
+const DATE_PATTERNS = [
+  // "Date & Time: 30-06-26, 14:30:00" (DD-MM-YY)
+  /Date\s*(?:&|and)?\s*Time\s*[:\-]\s*(\d{2})-(\d{2})-(\d{2,4}),?\s*(\d{2}):(\d{2}):?(\d{2})?/i,
+  // "on 30/06/2026 at 14:30" (DD/MM/YYYY)
+  /on\s+(\d{2})[/\-](\d{2})[/\-](\d{2,4})\s+(?:at\s+)?(\d{2}):(\d{2})/i,
+  // "Date: 30-Jun-2026"
+  /Date\s*[:\-]\s*(\d{1,2})[/\-](\w{3})[/\-](\d{2,4})/i,
+];
+
+/**
+ * Gmail search queries for Indian bank transaction emails.
+ * Covers major banks: Axis, HDFC, SBI, ICICI, Kotak, and generic patterns.
+ */
+const BANK_QUERIES = [
+  'from:alerts@axisbank.com',
+  'from:transaction@axisbank.com',
+  'from:alerts@hdfcbank.net',
+  'from:noreply@hdfcbank.net',
+  'from:noreply@sbi.co.in',
+  'from:alerts@icicibank.com',
+  'from:alerts@kotak.com',
+  'subject:"Transaction Alert"',
+  'subject:"Debit Alert"',
+  'subject:"UPI Transaction"',
+  'subject:"Account debited"',
+  'subject:"Amount Debited"',
+];
+
+/**
+ * Extracts amount from email body using multiple regex patterns.
+ * @param {string} body - The email body text
+ * @returns {number} Extracted amount, or 0 if no match
+ */
+function extractAmount(body) {
+  for (const pattern of AMOUNT_PATTERNS) {
+    const match = body.match(pattern);
+    if (match && match[1]) {
+      const amount = parseFloat(match[1].replace(/,/g, ''));
+      if (!isNaN(amount) && amount > 0) {
+        return amount;
+      }
+    }
+  }
+  return 0;
+}
+
+/**
+ * Extracts merchant name from email body.
+ * @param {string} body - The email body text
+ * @returns {string} Merchant name
+ */
+function extractMerchant(body) {
+  for (const pattern of MERCHANT_PATTERNS) {
+    const match = body.match(pattern);
+    if (match && match[1]) {
+      let rawInfo = match[1].trim();
+      // Clean up UPI-style merchant paths: "UPI/P2M/merchant_name/ref"
+      if (rawInfo.includes('/')) {
+        const parts = rawInfo.split('/');
+        // Try to find the most descriptive part (not UPI/P2M/P2P/ref numbers)
+        const descriptive = parts.find(p =>
+          p.length > 3 &&
+          !/^(UPI|P2M|P2P|IMPS|NEFT|RTGS|\d+)$/i.test(p)
+        );
+        if (descriptive) {
+          rawInfo = descriptive;
+        } else {
+          rawInfo = parts[parts.length - 1] || rawInfo;
+        }
+      }
+      // Clean trailing spaces and punctuation
+      rawInfo = rawInfo.replace(/[.\s]+$/, '').trim();
+      if (rawInfo.length > 2) {
+        return rawInfo;
+      }
+    }
+  }
+  return 'Bank Transaction';
+}
+
+/**
+ * Extracts transaction date from email body.
+ * @param {string} body - The email body text
+ * @param {object} msgData - Gmail message data (for internalDate fallback)
+ * @returns {Date} Extracted date
+ */
+function extractDate(body, msgData) {
+  // Pattern 1: "Date & Time: DD-MM-YY, HH:MM:SS"
+  const p1 = body.match(/Date\s*(?:&|and)?\s*Time\s*[:\-]\s*(\d{2})-(\d{2})-(\d{2,4}),?\s*(\d{2}):(\d{2}):?(\d{2})?/i);
+  if (p1) {
+    const [_, day, month, year, hours, minutes, seconds] = p1;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    const sec = seconds || '00';
+    return new Date(`${fullYear}-${month}-${day}T${hours}:${minutes}:${sec}+05:30`);
+  }
+
+  // Pattern 2: "on DD/MM/YYYY at HH:MM"
+  const p2 = body.match(/on\s+(\d{2})[/\-](\d{2})[/\-](\d{2,4})\s+(?:at\s+)?(\d{2}):(\d{2})/i);
+  if (p2) {
+    const [_, day, month, year, hours, minutes] = p2;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    return new Date(`${fullYear}-${month}-${day}T${hours}:${minutes}:00+05:30`);
+  }
+
+  // Fallback: use Gmail's internal date
+  if (msgData && msgData.data && msgData.data.internalDate) {
+    return new Date(parseInt(msgData.data.internalDate));
+  }
+
+  return new Date();
+}
+
+/**
+ * Decodes base64 encoded email body parts.
+ * @param {string} data - base64url encoded string
+ * @returns {string} Decoded UTF-8 string
+ */
+function decodeBase64(data) {
+  return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+}
+
+/**
+ * Extracts the full text body from a Gmail message payload.
+ * Handles multipart and single-part messages.
+ * @param {object} payload - Gmail message payload
+ * @returns {string} Email body text
+ */
+function extractEmailBody(payload) {
+  let emailBody = '';
+
+  // Try multipart payloads first
+  if (payload.parts) {
+    // Try text/plain first
+    const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
+    if (textPart && textPart.body && textPart.body.data) {
+      emailBody = decodeBase64(textPart.body.data);
+    }
+    // Fallback to text/html if no plain text
+    if (!emailBody) {
+      const htmlPart = payload.parts.find(p => p.mimeType === 'text/html');
+      if (htmlPart && htmlPart.body && htmlPart.body.data) {
+        // Strip HTML tags for basic text extraction
+        emailBody = decodeBase64(htmlPart.body.data).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+      }
+    }
+    // Last resort: first part
+    if (!emailBody && payload.parts[0] && payload.parts[0].body && payload.parts[0].body.data) {
+      emailBody = decodeBase64(payload.parts[0].body.data);
+    }
+    
+    // Handle nested multipart (multipart/alternative inside multipart/mixed)
+    if (!emailBody) {
+      for (const part of payload.parts) {
+        if (part.parts) {
+          const nestedText = part.parts.find(p => p.mimeType === 'text/plain');
+          if (nestedText && nestedText.body && nestedText.body.data) {
+            emailBody = decodeBase64(nestedText.body.data);
+            break;
+          }
+        }
+      }
+    }
+  } else if (payload.body && payload.body.data) {
+    emailBody = decodeBase64(payload.body.data);
+  }
+
+  return emailBody;
+}
+
+/**
+ * Determines if an email is a valid debit/expense transaction.
+ * Filters out credit alerts, promotional content, etc.
+ * @param {string} body - Email body text
+ * @param {string} subject - Email subject
+ * @returns {boolean}
+ */
+function isDebitTransaction(body, subject) {
+  const combined = `${subject} ${body}`.toLowerCase();
+
+  // Must contain some debit-related keyword
+  const debitKeywords = ['debited', 'debit', 'spent', 'withdrawn', 'paid', 'purchase', 'transaction'];
+  const hasDebitKeyword = debitKeywords.some(kw => combined.includes(kw));
+
+  // Must NOT be a credit transaction
+  const creditKeywords = ['credited', 'credit alert', 'received', 'refund', 'cashback'];
+  const isCreditTransaction = creditKeywords.some(kw => combined.includes(kw));
+
+  return hasDebitKeyword && !isCreditTransaction;
+}
+
+/**
+ * Reusable logic to fetch and parse bank transaction emails from Gmail.
+ * This function:
+ * 1. Authenticates with Gmail API using the user's refresh token
+ * 2. Searches for bank transaction emails
+ * 3. Parses amounts, merchants, and dates using robust regex patterns
+ * 4. Creates PendingTransaction records with deduplication
+ * 5. Marks processed emails as read
+ *
+ * @param {Object} user - User document with googleRefreshToken
+ */
 const syncRecentBankEmails = async (user) => {
   try {
     if (!user || !user.googleRefreshToken) return;
@@ -14,137 +254,159 @@ const syncRecentBankEmails = async (user) => {
     oauth2Client.setCredentials({ refresh_token: user.googleRefreshToken });
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    const bankQueries = [
-      'from:alerts@axis.bank.in',
-      'subject:"Transaction Alert"'
-    ];
-    const query = `is:unread (${bankQueries.join(' OR ')})`;
+    // Build comprehensive search query, starting from June 30, 2026 (local time, query after 2026/06/29)
+    const query = `after:2026/06/29 (${BANK_QUERIES.join(' OR ')})`;
 
     const response = await gmail.users.messages.list({
       userId: 'me',
       q: query,
-      maxResults: 5,
+      maxResults: 20, // Increased from 5 to avoid missing emails
     });
 
     const messages = response.data.messages || [];
 
     for (const msg of messages) {
-      const msgData = await gmail.users.messages.get({
-        userId: 'me',
-        id: msg.id,
-        format: 'full'
-      });
+      try {
+        // ── 1. Primary Deduplication Check: Gmail Message ID ──
+        // Check if we have already processed this exact email message ID
+        const msgIdExistsInExpense = await Expense.findOne({
+          user: user._id,
+          gmailMessageId: msg.id
+        });
 
-      let emailBody = '';
-      const payload = msgData.data.payload;
-      
-      const decodeBase64 = (data) => Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+        const msgIdExistsInPending = await PendingTransaction.findOne({
+          user: user._id,
+          gmailMessageId: msg.id
+        });
 
-      if (payload.parts) {
-        const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
-        if (textPart && textPart.body && textPart.body.data) {
-          emailBody = decodeBase64(textPart.body.data);
-        } else if (payload.parts[0] && payload.parts[0].body.data) {
-          emailBody = decodeBase64(payload.parts[0].body.data);
+        if (msgIdExistsInExpense || msgIdExistsInPending) {
+          // Already exists, just mark email as read to keep inbox clean
+          await gmail.users.messages.modify({
+            userId: 'me',
+            id: msg.id,
+            requestBody: { removeLabelIds: ['UNREAD'] }
+          });
+          continue;
         }
-      } else if (payload.body && payload.body.data) {
-        emailBody = decodeBase64(payload.body.data);
-      }
 
-      let extractedAmount = 0;
-      let extractedMerchant = "Axis Bank Transaction";
-      let extractedDate = new Date();
+        const msgData = await gmail.users.messages.get({
+          userId: 'me',
+          id: msg.id,
+          format: 'full'
+        });
 
-      const amountMatch = emailBody.match(/Amount Debited:\s*INR\s*([\d,]+\.\d{2})/i);
-      if (amountMatch && amountMatch[1]) {
-        extractedAmount = parseFloat(amountMatch[1].replace(/,/g, ''));
-      } else {
-        const altAmountMatch = emailBody.match(/INR\s*([\d,]+\.\d{2})\s*was debited/i);
-        if (altAmountMatch) extractedAmount = parseFloat(altAmountMatch[1].replace(/,/g, ''));
-      }
+        const payload = msgData.data.payload;
+        const emailBody = extractEmailBody(payload);
 
-      const infoMatch = emailBody.match(/Transaction Info:\s*(.+)/i);
-      if (infoMatch && infoMatch[1]) {
-        let rawInfo = infoMatch[1].trim();
-        if (rawInfo.startsWith('UPI/')) {
-          const parts = rawInfo.split('/');
-          extractedMerchant = parts[parts.length - 1] || rawInfo;
-        } else {
-          extractedMerchant = rawInfo;
+        // Get the email subject for debit vs credit filtering
+        const subjectHeader = payload.headers?.find(h => h.name.toLowerCase() === 'subject');
+        const subject = subjectHeader?.value || '';
+
+        // Skip if not a debit transaction
+        if (!isDebitTransaction(emailBody, subject)) {
+          // Mark as read to avoid re-processing
+          await gmail.users.messages.modify({
+            userId: 'me',
+            id: msg.id,
+            requestBody: { removeLabelIds: ['UNREAD'] }
+          });
+          continue;
         }
-      }
 
-      // Extract exact date
-      const dateMatch = emailBody.match(/Date & Time:\s*(\d{2})-(\d{2})-(\d{2}),\s*(\d{2}):(\d{2}):(\d{2})/i);
-      if (dateMatch) {
-        const [_, day, month, year, hours, minutes, seconds] = dateMatch;
-        const fullYear = year.length === 2 ? `20${year}` : year;
-        extractedDate = new Date(`${fullYear}-${month}-${day}T${hours}:${minutes}:${seconds}+05:30`);
-      } else if (msgData.data.internalDate) {
-        extractedDate = new Date(parseInt(msgData.data.internalDate));
-      }
+        // Extract structured data
+        const extractedAmount = extractAmount(emailBody);
+        const extractedMerchant = extractMerchant(emailBody);
+        const extractedDate = extractDate(emailBody, msgData);
 
-      if (extractedAmount === 0) extractedAmount = 100;
+        // ── CRITICAL: Skip if we couldn't extract a valid amount ──
+        // Never create a transaction with a fake/default amount
+        if (extractedAmount <= 0) {
+          console.warn(`[Expense Sync] Could not parse amount from email ${msg.id}. Skipping.`);
+          // Still mark as read to prevent infinite retry loop
+          await gmail.users.messages.modify({
+            userId: 'me',
+            id: msg.id,
+            requestBody: { removeLabelIds: ['UNREAD'] }
+          });
+          continue;
+        }
 
-      // 1. Ignore transactions before June 30, 2026
-      const cutoffDate = new Date('2026-06-30T00:00:00+05:30');
-      if (extractedDate < cutoffDate) {
+        // ── Date Cutoff: Ignore transactions before June 30, 2026 ──
+        const cutoffDate = new Date('2026-06-30T00:00:00+05:30');
+        if (extractedDate < cutoffDate) {
+          await gmail.users.messages.modify({
+            userId: 'me',
+            id: msg.id,
+            requestBody: { removeLabelIds: ['UNREAD'] }
+          });
+          continue;
+        }
+
+        // ── 2. Fallback Deduplication Check: Exact overlapping manual entries ──
+        // Check within ±5 minutes window for exact amount + merchant overlap
+        const fiveMins = 5 * 60 * 1000;
+        const minDate = new Date(extractedDate.getTime() - fiveMins);
+        const maxDate = new Date(extractedDate.getTime() + fiveMins);
+
+        const duplicateExpenseFallback = await Expense.findOne({
+          user: user._id,
+          amount: extractedAmount,
+          merchant: extractedMerchant,
+          date: { $gte: minDate, $lte: maxDate }
+        });
+
+        const duplicatePendingFallback = await PendingTransaction.findOne({
+          user: user._id,
+          amount: extractedAmount,
+          merchant: extractedMerchant,
+          date: { $gte: minDate, $lte: maxDate }
+        });
+
+        if (duplicateExpenseFallback || duplicatePendingFallback) {
+          // It's likely a duplicate of a manually entered transaction or already processed record.
+          // Save the message ID reference if possible, and skip
+          if (duplicateExpenseFallback && !duplicateExpenseFallback.gmailMessageId) {
+            duplicateExpenseFallback.gmailMessageId = msg.id;
+            await duplicateExpenseFallback.save();
+          } else if (duplicatePendingFallback && !duplicatePendingFallback.gmailMessageId) {
+            duplicatePendingFallback.gmailMessageId = msg.id;
+            await duplicatePendingFallback.save();
+          }
+
+          await gmail.users.messages.modify({
+            userId: 'me',
+            id: msg.id,
+            requestBody: { removeLabelIds: ['UNREAD'] }
+          });
+          continue;
+        }
+
+        // ── Create Pending Transaction ──
+        await PendingTransaction.create({
+          user: user._id,
+          amount: extractedAmount,
+          merchant: extractedMerchant,
+          paymentMethod: 'UPI',
+          status: 'Pending',
+          date: extractedDate,
+          notes: `Auto-detected from email: "${subject.substring(0, 80)}"`,
+          gmailMessageId: msg.id,
+          source: 'gmail_auto'
+        });
+
+        // Mark email as read
         await gmail.users.messages.modify({
           userId: 'me',
           id: msg.id,
           requestBody: { removeLabelIds: ['UNREAD'] }
         });
-        continue; // Skip saving
+      } catch (emailErr) {
+        // Log individual email errors but continue processing remaining emails
+        console.error(`[Expense Sync] Error processing email ${msg.id}:`, emailErr.message);
       }
-
-      // 2. Prevent Duplicates (match amount, merchant, and time within +/- 5 minutes)
-      const fiveMins = 5 * 60 * 1000;
-      const minDate = new Date(extractedDate.getTime() - fiveMins);
-      const maxDate = new Date(extractedDate.getTime() + fiveMins);
-
-      const Expense = require('../models/Expense');
-      
-      const duplicateExpense = await Expense.findOne({
-        user: user._id,
-        amount: extractedAmount,
-        merchant: extractedMerchant,
-        date: { $gte: minDate, $lte: maxDate }
-      });
-
-      const duplicatePending = await PendingTransaction.findOne({
-        user: user._id,
-        amount: extractedAmount,
-        merchant: extractedMerchant,
-        date: { $gte: minDate, $lte: maxDate }
-      });
-
-      if (duplicateExpense || duplicatePending) {
-        // Already exists, just mark email as read to prevent loop
-        await gmail.users.messages.modify({
-          userId: 'me',
-          id: msg.id,
-          requestBody: { removeLabelIds: ['UNREAD'] }
-        });
-        continue;
-      }
-
-      await PendingTransaction.create({
-        user: user._id,
-        amount: extractedAmount,
-        merchant: extractedMerchant,
-        paymentMethod: 'UPI',
-        status: 'Pending',
-        date: extractedDate
-      });
-
-      await gmail.users.messages.modify({
-        userId: 'me',
-        id: msg.id,
-        requestBody: { removeLabelIds: ['UNREAD'] }
-      });
     }
   } catch (err) {
-    console.error('Error during bank email sync:', err);
+    console.error('[Expense Sync] Error during bank email sync:', err.message);
   }
 };
 

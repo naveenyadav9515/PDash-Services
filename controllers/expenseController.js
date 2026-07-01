@@ -43,27 +43,38 @@ exports.getExpenseSummary = async (req, res, next) => {
     const userId = req.user.id;
     const now = new Date();
     
-    // 1. Time Boundaries
+    // ── 1. Time Boundaries ──
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    // 2. Fetch all expenses for calculations
-    const expenses = await Expense.find({ user: userId });
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const daysPassed = Math.max(1, now.getDate());
+    const daysLeft = Math.max(0, daysInMonth - daysPassed);
 
-    // 3. Helper to sum amounts based on date range
-    const sumRange = (start, end) => {
-      return expenses
-        .filter(e => e.date >= start && (!end || e.date <= end))
-        .reduce((sum, e) => sum + e.amount, 0);
-    };
+    // ── 2. Previous month boundaries (for trend comparison) ──
+    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-    // Core Metrics
+    // ── 3. Fetch ONLY relevant expenses using MongoDB queries (not all expenses!) ──
+    const thisMonthExpenses = await Expense.find({
+      user: userId,
+      date: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+
+    const prevMonthExpenses = await Expense.find({
+      user: userId,
+      date: { $gte: startOfPrevMonth, $lte: endOfPrevMonth }
+    });
+
+    // ── 4. Calculate monthly spend precisely ──
+    const monthlySpend = thisMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const prevMonthSpend = prevMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+    // ── 5. Budget calculations ──
     const budgetTarget = 30000;
-    const monthlySpend = sumRange(startOfMonth);
     const budgetUsedPct = Math.min(100, Math.round((monthlySpend / budgetTarget) * 100));
-    
-    // Top Categories
+
+    // ── 6. Top Categories (from this month only) ──
     const categoryTotals = {};
-    const thisMonthExpenses = expenses.filter(e => e.date >= startOfMonth);
     thisMonthExpenses.forEach(e => {
       categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
     });
@@ -75,12 +86,18 @@ exports.getExpenseSummary = async (req, res, next) => {
         percentage: monthlySpend === 0 ? 0 : Math.round((categoryTotals[cat] / monthlySpend) * 1000) / 10
       }))
       .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5); // top 5
+      .slice(0, 5);
 
-    // Chart Data (7 Days)
+    // ── 7. Chart Data — last 7 days ──
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(now.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    // Fetch 7-day expenses in a single query
+    const weekExpenses = await Expense.find({
+      user: userId,
+      date: { $gte: sevenDaysAgo, $lte: now }
+    });
 
     const chartLabels = [];
     const chartData = [];
@@ -89,10 +106,10 @@ exports.getExpenseSummary = async (req, res, next) => {
     for (let i = 0; i < 7; i++) {
       const d = new Date(sevenDaysAgo);
       d.setDate(d.getDate() + i);
-      const dStart = new Date(d.setHours(0,0,0,0));
-      const dEnd = new Date(d.setHours(23,59,59,999));
+      const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
       
-      const dayTotal = expenses
+      const dayTotal = weekExpenses
         .filter(e => e.date >= dStart && e.date <= dEnd)
         .reduce((sum, e) => sum + e.amount, 0);
         
@@ -101,15 +118,51 @@ exports.getExpenseSummary = async (req, res, next) => {
       weeklyTotal += dayTotal;
     }
 
-    // AI Insight / Forecast Math
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysPassed = Math.max(1, now.getDate());
-    const dailyAvg = monthlySpend / daysPassed;
-    const estimatedSpend = Math.round(dailyAvg * daysInMonth);
+    // ── 8. Real trend calculation ──
+    // Compare current month's daily avg with previous month's daily avg
+    const prevDaysInMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+    const prevDailyAvg = prevMonthSpend / prevDaysInMonth;
+    const currentDailyAvg = monthlySpend / daysPassed;
+    
+    let trendPct = 0;
+    let trendStatus = 'flat';
+    if (prevDailyAvg > 0) {
+      trendPct = Math.round(((currentDailyAvg - prevDailyAvg) / prevDailyAvg) * 100);
+      trendStatus = trendPct > 0 ? 'up' : trendPct < 0 ? 'down' : 'flat';
+      trendPct = Math.abs(trendPct);
+    }
+
+    // ── 9. Forecast ──
+    const estimatedSpend = Math.round(currentDailyAvg * daysInMonth);
     const isHealthy = estimatedSpend <= budgetTarget;
     
-    // Example AI Insight finding highest category vs usual
+    // ── 10. Real Insight — find category with highest spend vs prev month ──
+    const prevCategoryTotals = {};
+    prevMonthExpenses.forEach(e => {
+      const catName = e.category === 'Food' ? 'Food & Dining' : e.category;
+      prevCategoryTotals[catName] = (prevCategoryTotals[catName] || 0) + e.amount;
+    });
+
     const topCat = topCategories[0]?.name || 'Food & Dining';
+    const topCatThisMonth = categoryTotals[topCat === 'Food & Dining' ? 'Food' : topCat] || 0;
+    const topCatPrevMonth = prevCategoryTotals[topCat] || 0;
+    
+    let insightPct = 0;
+    let insightText = '';
+    if (topCatPrevMonth > 0) {
+      insightPct = Math.round(((topCatThisMonth - topCatPrevMonth) / topCatPrevMonth) * 100);
+      if (insightPct > 0) {
+        insightText = `You're spending ${insightPct}% more on ${topCat} compared to last month.`;
+      } else if (insightPct < 0) {
+        insightText = `Great job! You've reduced ${topCat} spending by ${Math.abs(insightPct)}% vs last month.`;
+      } else {
+        insightText = `Your ${topCat} spending is consistent with last month.`;
+      }
+    } else if (topCatThisMonth > 0) {
+      insightText = `${topCat} is your top category this month at ₹${topCatThisMonth.toLocaleString('en-IN')}.`;
+    } else {
+      insightText = 'Start logging expenses to get spending insights!';
+    }
 
     res.status(200).json({
       status: 'success',
@@ -120,13 +173,15 @@ exports.getExpenseSummary = async (req, res, next) => {
         budgetStatus: isHealthy ? 'Healthy' : 'At Risk',
         spent: monthlySpend,
         available: Math.max(0, budgetTarget - monthlySpend),
+        daysLeft,
+        daysInMonth,
         topCategories,
         spendingTrend: {
           labels: chartLabels,
           data: chartData,
-          avgPerWeek: Math.round(weeklyTotal / 1), // Assuming 1 week
-          trendPct: 8, // mock percentage
-          trendStatus: 'up'
+          avgPerWeek: Math.round(weeklyTotal),
+          trendPct,
+          trendStatus
         },
         forecast: {
           estimatedSpend,
@@ -134,9 +189,9 @@ exports.getExpenseSummary = async (req, res, next) => {
           statusColor: isHealthy ? 'var(--lm-color-success)' : 'var(--lm-color-error)'
         },
         insight: {
-          highlightPct: '28%',
+          highlightPct: `${Math.abs(insightPct)}%`,
           highlightCategory: topCat,
-          text: `You're spending 28% more on ${topCat} compared to your monthly average.`
+          text: insightText
         }
       }
     });
@@ -187,7 +242,8 @@ exports.processPendingTransaction = async (req, res, next) => {
         paymentMethod: expenseData.paymentMethod || pending.paymentMethod,
         date: pending.date,
         tags: expenseData.tags || pending.tags,
-        notes: expenseData.notes || pending.notes
+        notes: expenseData.notes || pending.notes,
+        gmailMessageId: pending.gmailMessageId
       });
 
       return res.status(201).json({ status: 'success', data: expense });
