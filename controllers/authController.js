@@ -3,9 +3,19 @@ const jwt = require('jsonwebtoken');
 const config = require('../config/index');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
+const AppError = require('../utils/AppError');
+const { encryptSecret } = require('../utils/crypto.util');
 
-// Initialize Google Auth Client (Uses placeholder if not set)
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'placeholder_client_id');
+const getGoogleClientConfig = () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId) {
+    throw AppError.badRequest('Google authentication is not configured');
+  }
+
+  return { clientId, clientSecret };
+};
 
 // Helper to generate JWT token
 const generateToken = (id) => {
@@ -93,18 +103,25 @@ exports.loginUser = async (req, res, next) => {
 exports.googleAuth = async (req, res, next) => {
   try {
     const { token } = req.body;
+    const { clientId } = getGoogleClientConfig();
 
     if (!token) {
       return res.status(400).json({ status: 'error', message: 'Google ID token is required' });
     }
 
+    const client = new OAuth2Client(clientId);
+
     // Verify the Google token payload
     const ticket = await client.verifyIdToken({
       idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID || 'placeholder_client_id',
+      audience: clientId,
     });
     const payload = ticket.getPayload();
     const { email, given_name, family_name, picture } = payload;
+
+    if (!email) {
+      return next(AppError.badRequest('Google account email is required'));
+    }
 
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -114,7 +131,7 @@ exports.googleAuth = async (req, res, next) => {
       const secureRandomPassword = crypto.randomBytes(32).toString('hex');
       user = await User.create({
         firstName: given_name || 'User',
-        lastName: family_name || '',
+        lastName: family_name || 'Account',
         email,
         password: secureRandomPassword,
         avatarUrl: picture,
@@ -140,15 +157,16 @@ exports.googleAuth = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Google Auth Error:', error);
-    res.status(401).json({ status: 'error', message: `Google Error: ${error.message}` });
+    next(error);
   }
 };
 
 exports.getGoogleAuthUrl = (req, res) => {
   const redirectUri = req.query.redirectUri || 'http://localhost:4200/expenses';
+  const { clientId, clientSecret } = getGoogleClientConfig();
   const oauth2Client = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
+    clientId,
+    clientSecret,
     redirectUri
   );
 
@@ -164,9 +182,15 @@ exports.getGoogleAuthUrl = (req, res) => {
 exports.connectGmail = async (req, res, next) => {
   try {
     const { code, redirectUri } = req.body;
+    const { clientId, clientSecret } = getGoogleClientConfig();
+
+    if (!clientSecret) {
+      return next(AppError.badRequest('Google Gmail connection is not configured'));
+    }
+
     const oauth2Client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
+      clientId,
+      clientSecret,
       redirectUri || 'http://localhost:4200/expenses'
     );
 
@@ -175,7 +199,7 @@ exports.connectGmail = async (req, res, next) => {
     if (tokens.refresh_token) {
       const updatedUser = await User.findByIdAndUpdate(req.user.id, {
         gmailConnected: true,
-        googleRefreshToken: tokens.refresh_token,
+        googleRefreshToken: encryptSecret(tokens.refresh_token),
         expenseAutomationEnabled: true
       }, { new: true }).select('+googleRefreshToken');
       

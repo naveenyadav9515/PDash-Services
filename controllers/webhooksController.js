@@ -2,6 +2,8 @@ const User = require('../models/User');
 const PendingTransaction = require('../models/PendingTransaction');
 const Expense = require('../models/Expense');
 const { google } = require('googleapis');
+const config = require('../config/index');
+const { decryptSecret } = require('../utils/crypto.util');
 
 /**
  * Comprehensive bank email amount extraction patterns.
@@ -69,6 +71,20 @@ const BANK_QUERIES = [
   'subject:"Account debited"',
   'subject:"Amount Debited"',
 ];
+
+function formatGmailQueryDate(date) {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(date.getUTCDate()).padStart(2, '0');
+  return `${yyyy}/${mm}/${dd}`;
+}
+
+function getSyncCutoffDate() {
+  const cutoffDate = new Date();
+  cutoffDate.setUTCDate(cutoffDate.getUTCDate() - config.app.gmailSyncLookbackDays);
+  cutoffDate.setUTCHours(0, 0, 0, 0);
+  return cutoffDate;
+}
 
 /**
  * Extracts amount from email body using multiple regex patterns.
@@ -247,23 +263,17 @@ const syncRecentBankEmails = async (user) => {
   try {
     if (!user || !user.googleRefreshToken) return;
 
+    const refreshToken = decryptSecret(user.googleRefreshToken);
+    const cutoffDate = getSyncCutoffDate();
+
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET
     );
-    oauth2Client.setCredentials({ refresh_token: user.googleRefreshToken });
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Convert current UTC time to IST offset (UTC+5:30) for accurate monthly boundary checks
-    const now = new Date();
-    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const istNow = new Date(utcTime + (3600000 * 5.5));
-    const currentYear = istNow.getFullYear();
-    const currentMonth = istNow.getMonth(); // 0-indexed
-
-    // Format start of current month as YYYY/MM/DD for Gmail search
-    const startOfMonthStr = `${currentYear}/${String(currentMonth + 1).padStart(2, '0')}/01`;
-    const query = `after:${startOfMonthStr} (${BANK_QUERIES.join(' OR ')})`;
+    const query = `after:${formatGmailQueryDate(cutoffDate)} (${BANK_QUERIES.join(' OR ')})`;
 
     const response = await gmail.users.messages.list({
       userId: 'me',
@@ -339,8 +349,7 @@ const syncRecentBankEmails = async (user) => {
           continue;
         }
 
-        // ── Date Cutoff: Ignore transactions before the start of the current month ──
-        const cutoffDate = new Date(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
+        // Keep sync bounded so old emails are not repeatedly reconsidered.
         if (extractedDate < cutoffDate) {
           await gmail.users.messages.modify({
             userId: 'me',
@@ -424,6 +433,14 @@ const syncRecentBankEmails = async (user) => {
  */
 const handleGmailPushNotification = async (req, res, next) => {
   try {
+    if (
+      config.app.pubsubVerificationToken &&
+      req.get('x-pdash-webhook-token') !== config.app.pubsubVerificationToken &&
+      req.query.token !== config.app.pubsubVerificationToken
+    ) {
+      return res.status(401).send('Unauthorized');
+    }
+
     if (!req.body || !req.body.message || !req.body.message.data) {
       return res.status(400).send('Invalid Pub/Sub message format');
     }

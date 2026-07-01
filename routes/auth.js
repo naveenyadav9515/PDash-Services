@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { registerUser, loginUser, googleAuth } = require('../controllers/authController');
+const { authLimiter } = require('../middleware/rate-limiter');
 
 /**
  * @swagger
@@ -43,7 +44,7 @@ const { registerUser, loginUser, googleAuth } = require('../controllers/authCont
  *       400:
  *         description: Invalid data or user already exists
  */
-router.post('/register', registerUser);
+router.post('/register', authLimiter, registerUser);
 
 /**
  * @swagger
@@ -72,7 +73,7 @@ router.post('/register', registerUser);
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', loginUser);
+router.post('/login', authLimiter, loginUser);
 
 /**
  * @swagger
@@ -98,7 +99,7 @@ router.post('/login', loginUser);
  *       401:
  *         description: Invalid Google Token
  */
-router.post('/google', googleAuth);
+router.post('/google', authLimiter, googleAuth);
 
 const { protect } = require('../middleware/auth');
 router.get('/google/url', protect, require('../controllers/authController').getGoogleAuthUrl);

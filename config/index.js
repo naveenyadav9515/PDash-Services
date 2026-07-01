@@ -36,5 +36,8 @@ module.exports = {
   
   app: {
     maxWorkspaces: parseInt(process.env.MAX_WORKSPACES, 10) || 6,
+    expenseMonthlyBudget: parseInt(process.env.EXPENSE_MONTHLY_BUDGET, 10) || 30000,
+    gmailSyncLookbackDays: parseInt(process.env.GMAIL_SYNC_LOOKBACK_DAYS, 10) || 30,
+    pubsubVerificationToken: process.env.PUBSUB_VERIFICATION_TOKEN || '',
   }
 };

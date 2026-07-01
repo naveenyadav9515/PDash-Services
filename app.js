@@ -1,9 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
-const hpp = require('hpp');
 const corsOptions = require('./config/cors');
 const { apiLimiter } = require('./middleware/rate-limiter');
 const config = require('./config/index');
@@ -11,6 +8,7 @@ const logger = require('./config/logger');
 const requestLogger = require('./middleware/request-logger');
 const correlationIdMiddleware = require('./middleware/correlation-id');
 const errorHandler = require('./middleware/error-handler');
+const sanitizeInput = require('./middleware/sanitize-input');
 const AppError = require('./utils/AppError');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -42,9 +40,7 @@ app.use('/api', apiLimiter);
 
 // Epic 2.4: Input Sanitization & Body Parser
 app.use(express.json({ limit: '10kb' }));
-// app.use(mongoSanitize()); // Temporarily disabled due to query setter crash in Node 24
-// app.use(xss());           // Temporarily disabled due to query setter crash
-// app.use(hpp());           // Temporarily disabled due to query setter crash
+app.use(sanitizeInput);
 
 // Generate Unique Request ID
 app.use(correlationIdMiddleware);

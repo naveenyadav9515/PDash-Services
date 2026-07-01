@@ -1,5 +1,7 @@
 const Expense = require('../models/Expense');
 const PendingTransaction = require('../models/PendingTransaction');
+const config = require('../config/index');
+const AppError = require('../utils/AppError');
 
 exports.getExpenses = async (req, res, next) => {
   try {
@@ -81,7 +83,7 @@ exports.getExpenseSummary = async (req, res, next) => {
     const prevMonthSpend = prevMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
 
     // ── 5. Budget calculations ──
-    const budgetTarget = 30000;
+    const budgetTarget = config.app.expenseMonthlyBudget;
     const budgetUsedPct = Math.min(100, Math.round((monthlySpend / budgetTarget) * 100));
 
     // ── 6. Top Categories (from this month only) ──
@@ -269,6 +271,10 @@ exports.processPendingTransaction = async (req, res, next) => {
 // Automatic log feature simulator (Mocking Gmail parser)
 exports.simulateAutoLog = async (req, res, next) => {
   try {
+    if (config.env === 'production') {
+      return next(AppError.notFound('Route'));
+    }
+
     const { amount, merchant, paymentMethod, date } = req.body;
     
     // Simulate parsing email to a pending transaction
