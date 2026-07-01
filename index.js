@@ -16,17 +16,19 @@ const server = app.listen(PORT, async () => {
 
   // 🔄 Self Keep-Alive: Prevents Render free tier from sleeping the server.
   // Pings own health endpoint every 10 minutes so Render sees continuous activity.
-  if (config.env === 'production') {
+  // Uses RENDER_EXTERNAL_URL (auto-set by Render) to dynamically resolve the correct URL.
+  const selfUrl = process.env.RENDER_EXTERNAL_URL;
+  if (selfUrl) {
     const KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
     setInterval(async () => {
       try {
-        const res = await fetch(`https://pdash-services.onrender.com/api/hello`);
+        const res = await fetch(`${selfUrl}/api/hello`);
         logger.info(`♻️ Keep-alive ping: ${res.status}`);
       } catch (err) {
         logger.warn(`♻️ Keep-alive ping failed: ${err.message}`);
       }
     }, KEEP_ALIVE_INTERVAL_MS);
-    logger.info('♻️ Self keep-alive enabled (every 10 minutes)');
+    logger.info(`♻️ Self keep-alive enabled (every 10 minutes) → ${selfUrl}`);
   }
 });
 
