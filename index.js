@@ -12,7 +12,7 @@ const server = app.listen(PORT, async () => {
   // Connect to DB after server is listening
   await connectDB();
   
-  logger.info(`👉 Test endpoint: http://localhost:${PORT}/api/hello`);
+  logger.info(`👉 Test endpoint: http://localhost:${PORT}/api/health`);
 
   // 🔄 Self Keep-Alive: Prevents Render free tier from sleeping the server.
   // Pings own health endpoint every 10 minutes so Render sees continuous activity.
@@ -22,7 +22,7 @@ const server = app.listen(PORT, async () => {
     const KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
     setInterval(async () => {
       try {
-        const res = await fetch(`${selfUrl}/api/hello`);
+        const res = await fetch(`${selfUrl}/api/health`);
         logger.info(`♻️ Keep-alive ping: ${res.status}`);
       } catch (err) {
         logger.warn(`♻️ Keep-alive ping failed: ${err.message}`);

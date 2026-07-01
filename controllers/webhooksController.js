@@ -80,10 +80,10 @@ function formatGmailQueryDate(date) {
 }
 
 function getSyncCutoffDate() {
-  const cutoffDate = new Date();
-  cutoffDate.setUTCDate(cutoffDate.getUTCDate() - config.app.gmailSyncLookbackDays);
-  cutoffDate.setUTCHours(0, 0, 0, 0);
-  return cutoffDate;
+  const now = new Date();
+  // Fetch all transactions from the gmail since "last 60 days"
+  const cutoff = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));
+  return cutoff;
 }
 
 /**

@@ -49,11 +49,12 @@ app.use(correlationIdMiddleware);
 app.use(requestLogger);
 
 // Routes
-app.get('/api/hello', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({
     status: 'success',
-    message: 'Hello from PDash-Services API!',
-    timestamp: new Date().toISOString()
+    message: 'System is online and operating optimally.',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
