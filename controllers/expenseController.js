@@ -43,16 +43,27 @@ exports.getExpenseSummary = async (req, res, next) => {
     const userId = req.user.id;
     const now = new Date();
     
-    // ── 1. Time Boundaries ──
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysPassed = Math.max(1, now.getDate());
+    // Convert current UTC time to IST offset (UTC+5:30) for accurate boundary checks
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const istNow = new Date(utcTime + (3600000 * 5.5));
+    const year = istNow.getFullYear();
+    const month = istNow.getMonth(); // 0-indexed
+    
+    // ── 1. Time Boundaries (in IST, stored as UTC in Mongoose) ──
+    const startOfMonth = new Date(`${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const endOfMonth = new Date(`${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}T23:59:59.999+05:30`);
+    
+    const daysPassed = Math.max(1, istNow.getDate());
     const daysLeft = Math.max(0, daysInMonth - daysPassed);
 
     // ── 2. Previous month boundaries (for trend comparison) ──
-    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear = month === 0 ? year - 1 : year;
+    const prevDaysInMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+
+    const startOfPrevMonth = new Date(`${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
+    const endOfPrevMonth = new Date(`${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(prevDaysInMonth).padStart(2, '0')}T23:59:59.999+05:30`);
 
     // ── 3. Fetch ONLY relevant expenses using MongoDB queries (not all expenses!) ──
     const thisMonthExpenses = await Expense.find({
@@ -88,15 +99,16 @@ exports.getExpenseSummary = async (req, res, next) => {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
 
-    // ── 7. Chart Data — last 7 days ──
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+    // ── 7. Chart Data — last 7 days in IST ──
+    const sevenDaysAgoIST = new Date(istNow);
+    sevenDaysAgoIST.setDate(istNow.getDate() - 6);
+    
+    const startOfChartRange = new Date(`${sevenDaysAgoIST.getFullYear()}-${String(sevenDaysAgoIST.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysAgoIST.getDate()).padStart(2, '0')}T00:00:00.000+05:30`);
 
     // Fetch 7-day expenses in a single query
     const weekExpenses = await Expense.find({
       user: userId,
-      date: { $gte: sevenDaysAgo, $lte: now }
+      date: { $gte: startOfChartRange, $lte: now }
     });
 
     const chartLabels = [];
@@ -104,10 +116,10 @@ exports.getExpenseSummary = async (req, res, next) => {
     let weeklyTotal = 0;
 
     for (let i = 0; i < 7; i++) {
-      const d = new Date(sevenDaysAgo);
+      const d = new Date(startOfChartRange);
       d.setDate(d.getDate() + i);
-      const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-      const dEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      const dStart = new Date(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T00:00:00.000+05:30`);
+      const dEnd = new Date(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T23:59:59.999+05:30`);
       
       const dayTotal = weekExpenses
         .filter(e => e.date >= dStart && e.date <= dEnd)
@@ -120,7 +132,6 @@ exports.getExpenseSummary = async (req, res, next) => {
 
     // ── 8. Real trend calculation ──
     // Compare current month's daily avg with previous month's daily avg
-    const prevDaysInMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
     const prevDailyAvg = prevMonthSpend / prevDaysInMonth;
     const currentDailyAvg = monthlySpend / daysPassed;
     

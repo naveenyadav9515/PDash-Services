@@ -254,8 +254,16 @@ const syncRecentBankEmails = async (user) => {
     oauth2Client.setCredentials({ refresh_token: user.googleRefreshToken });
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Build comprehensive search query, starting from June 30, 2026 (local time, query after 2026/06/29)
-    const query = `after:2026/06/29 (${BANK_QUERIES.join(' OR ')})`;
+    // Convert current UTC time to IST offset (UTC+5:30) for accurate monthly boundary checks
+    const now = new Date();
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const istNow = new Date(utcTime + (3600000 * 5.5));
+    const currentYear = istNow.getFullYear();
+    const currentMonth = istNow.getMonth(); // 0-indexed
+
+    // Format start of current month as YYYY/MM/DD for Gmail search
+    const startOfMonthStr = `${currentYear}/${String(currentMonth + 1).padStart(2, '0')}/01`;
+    const query = `after:${startOfMonthStr} (${BANK_QUERIES.join(' OR ')})`;
 
     const response = await gmail.users.messages.list({
       userId: 'me',
@@ -331,8 +339,8 @@ const syncRecentBankEmails = async (user) => {
           continue;
         }
 
-        // ── Date Cutoff: Ignore transactions before June 30, 2026 ──
-        const cutoffDate = new Date('2026-06-30T00:00:00+05:30');
+        // ── Date Cutoff: Ignore transactions before the start of the current month ──
+        const cutoffDate = new Date(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
         if (extractedDate < cutoffDate) {
           await gmail.users.messages.modify({
             userId: 'me',
