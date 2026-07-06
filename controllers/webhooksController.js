@@ -369,8 +369,15 @@ const syncRecentBankEmails = async (user) => {
           date: { $gte: minuteStart, $lte: minuteEnd }
         });
 
-        if (duplicateInHistory) {
-          console.log(`[Expense Sync] Duplicate found in history: ₹${extractedAmount} to "${extractedMerchant}" at ${extractedDate.toISOString()}. Skipping.`);
+        const duplicateInPending = await PendingTransaction.findOne({
+          user: user._id,
+          amount: extractedAmount,
+          merchant: extractedMerchant,
+          date: { $gte: minuteStart, $lte: minuteEnd }
+        });
+
+        if (duplicateInHistory || duplicateInPending) {
+          console.log(`[Expense Sync] Duplicate found (History/Pending): ₹${extractedAmount} to "${extractedMerchant}" at ${extractedDate.toISOString()}. Skipping.`);
           await gmail.users.messages.modify({
             userId: 'me',
             id: msg.id,
