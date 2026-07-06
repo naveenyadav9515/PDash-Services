@@ -66,14 +66,20 @@ function formatGmailQueryDate(date) {
 }
 
 function getSyncCutoffDate() {
-  // Calculate start of current month in IST (UTC+5:30)
+  // Calculate start of the previous month in IST (UTC+5:30)
   const now = new Date();
   const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
   const istNow = new Date(utcTime + (3600000 * 5.5));
-  const year = istNow.getFullYear();
-  const month = istNow.getMonth(); // 0-indexed
-  // Return 1st of current month at midnight IST
-  return new Date(`${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
+  
+  let year = istNow.getFullYear();
+  let prevMonth = istNow.getMonth() - 1; // 0-indexed, so if current is Jan (0), prev is -1
+  if (prevMonth < 0) {
+    prevMonth = 11;
+    year -= 1;
+  }
+  
+  // Return 1st of the previous month at midnight IST
+  return new Date(`${year}-${String(prevMonth + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
 }
 
 /**

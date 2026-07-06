@@ -12,13 +12,17 @@ mongoose.connect(process.env.MONGO_URI).then(async () => {
   oauth2Client.setCredentials({ refresh_token: decryptSecret(user.googleRefreshToken) });
   const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
   
-  // Calculate start of current month in IST
+  // Calculate start of the previous month in IST
   const now = new Date();
   const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
   const istNow = new Date(utcTime + (3600000 * 5.5));
-  const year = istNow.getFullYear();
-  const month = istNow.getMonth();
-  const cutoff = new Date(`${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
+  let year = istNow.getFullYear();
+  let prevMonth = istNow.getMonth() - 1;
+  if (prevMonth < 0) {
+    prevMonth = 11;
+    year -= 1;
+  }
+  const cutoff = new Date(`${year}-${String(prevMonth + 1).padStart(2, '0')}-01T00:00:00.000+05:30`);
   const yyyy = cutoff.getUTCFullYear();
   const mm = String(cutoff.getUTCMonth()+1).padStart(2,'0');
   const dd = String(cutoff.getUTCDate()).padStart(2,'0');
