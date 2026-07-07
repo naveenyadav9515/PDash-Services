@@ -480,23 +480,8 @@ const activateGmailWatch = async (user) => {
   });
 };
 
-const setupGmailWatch = async (req, res) => {
-  try {
-    const user = await User.findOne({ gmailConnected: true }).select('+googleRefreshToken');
-    if (!user) return res.status(404).send('No connected user found.');
-
-    const response = await activateGmailWatch(user);
-
-    res.json({ message: 'Gmail watch successfully activated!', data: response.data });
-  } catch (error) {
-    console.error('Setup Watch Error:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-};
-
 module.exports = {
   handleGmailPushNotification,
   syncRecentBankEmails,
-  setupGmailWatch,
   activateGmailWatch
 };
