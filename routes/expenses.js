@@ -17,4 +17,6 @@ router.route('/')
   .post(expenseController.createExpense)
   .get(expenseController.getExpenses);
 
+router.delete('/:id', expenseController.deleteExpense);
+
 module.exports = router;

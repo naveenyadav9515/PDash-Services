@@ -40,6 +40,18 @@ exports.createExpense = async (req, res, next) => {
   }
 };
 
+exports.deleteExpense = async (req, res, next) => {
+  try {
+    const expense = await Expense.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    if (!expense) {
+      return res.status(404).json({ status: 'error', message: 'Expense not found' });
+    }
+    res.status(200).json({ status: 'success', message: 'Expense deleted' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getExpenseSummary = async (req, res, next) => {
   try {
     const userId = req.user.id;
