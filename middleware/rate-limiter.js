@@ -23,7 +23,7 @@ exports.apiLimiter = rateLimit({
  */
 exports.authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login/register requests per window
+  max: 10, // Limit each IP to 10 login/register requests per window
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => process.env.NODE_ENV === 'development', // Skip in development
