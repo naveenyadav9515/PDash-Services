@@ -10,6 +10,7 @@ exports.apiLimiter = rateLimit({
   max: config.rateLimit.max, // Limit each IP to X requests per windowMs
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: () => process.env.NODE_ENV === 'development', // Skip in development
   message: {
     status: 'error',
     message: 'Too many requests from this IP, please try again after 15 minutes',
@@ -25,6 +26,7 @@ exports.authLimiter = rateLimit({
   max: 5, // Limit each IP to 5 login/register requests per window
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'development', // Skip in development
   message: {
     status: 'error',
     message: 'Too many login attempts from this IP, please try again after 15 minutes',
