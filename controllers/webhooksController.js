@@ -461,27 +461,31 @@ const handleGmailPushNotification = async (req, res, next) => {
   }
 };
 
+const activateGmailWatch = async (user) => {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+  
+  oauth2Client.setCredentials({ refresh_token: decryptSecret(user.googleRefreshToken) });
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  
+  return await gmail.users.watch({
+    userId: 'me',
+    requestBody: {
+      labelIds: ['INBOX'],
+      labelFilterAction: 'include',
+      topicName: 'projects/pdash-1997/topics/gmail-expenses-topic'
+    }
+  });
+};
+
 const setupGmailWatch = async (req, res) => {
   try {
     const user = await User.findOne({ gmailConnected: true }).select('+googleRefreshToken');
     if (!user) return res.status(404).send('No connected user found.');
 
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET
-    );
-    
-    oauth2Client.setCredentials({ refresh_token: decryptSecret(user.googleRefreshToken) });
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-    
-    const response = await gmail.users.watch({
-      userId: 'me',
-      requestBody: {
-        labelIds: ['INBOX'],
-        labelFilterAction: 'include',
-        topicName: 'projects/pdash-1997/topics/gmail-expenses-topic'
-      }
-    });
+    const response = await activateGmailWatch(user);
 
     res.json({ message: 'Gmail watch successfully activated!', data: response.data });
   } catch (error) {
@@ -493,5 +497,6 @@ const setupGmailWatch = async (req, res) => {
 module.exports = {
   handleGmailPushNotification,
   syncRecentBankEmails,
-  setupGmailWatch
+  setupGmailWatch,
+  activateGmailWatch
 };

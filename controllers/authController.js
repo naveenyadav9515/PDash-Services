@@ -204,8 +204,16 @@ exports.connectGmail = async (req, res, next) => {
       }, { new: true }).select('+googleRefreshToken');
       
       // Perform initial sync of recent emails!
-      const { syncRecentBankEmails } = require('./webhooksController');
+      const { syncRecentBankEmails, activateGmailWatch } = require('./webhooksController');
       await syncRecentBankEmails(updatedUser);
+      
+      // Auto-subscribe the new user to Google Cloud Push Notifications
+      try {
+        await activateGmailWatch(updatedUser);
+        console.log(`[Gmail Setup] Successfully activated real-time push notifications for ${updatedUser.email}`);
+      } catch (watchErr) {
+        console.error(`[Gmail Setup] Failed to activate push notifications for ${updatedUser.email}:`, watchErr.message);
+      }
 
       res.json({ status: 'success', message: 'Gmail connected successfully' });
     } else {
