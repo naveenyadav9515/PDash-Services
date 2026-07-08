@@ -1,6 +1,6 @@
 # Enterprise Backend (Express.js) — Architectural & Development Guidelines
 
-This document defines the strict engineering standards, architectural patterns, and development practices governing all backend changes in the **P-Dash Personal Hub** Express.js application. Every API endpoint, service, model, and middleware must comply with these guidelines to ensure production-grade security, scalability, reliability, maintainability, and operational excellence.
+This document defines the strict engineering standards, architectural patterns, and development practices governing all backend changes in the **OneSpace Personal Hub** Express.js application. Every API endpoint, service, model, and middleware must comply with these guidelines to ensure production-grade security, scalability, reliability, maintainability, and operational excellence.
 
 ---
 

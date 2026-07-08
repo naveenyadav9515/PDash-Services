@@ -1,4 +1,4 @@
-# P-Dash: Backend Implementation Plan
+# OneSpace: Backend Implementation Plan
 > A mobile-first Personal Dashboard PWA
 
 This document serves as the master blueprint for backend development, optimized for AI-assisted workflows. 

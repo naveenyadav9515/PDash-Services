@@ -1,6 +1,6 @@
-# PDash-Services - Backend Development Guide
+# OneSpace-Services - Backend Development Guide
 
-This is the developer guide for the **PDash-Services** API backend. The service is built with Node.js and Express, connecting to MongoDB Atlas using Mongoose.
+This is the developer guide for the **OneSpace-Services** API backend. The service is built with Node.js and Express, connecting to MongoDB Atlas using Mongoose.
 
 ---
 
@@ -13,7 +13,7 @@ To maintain fast feedback loops, run the dev server locally with hot-reloading u
 * **npm**: v10+
 
 ### Step-by-Step Launch
-1. Create a local environment file named `.env` in this directory (`PDash-Services`). Do **not** commit this file to Git.
+1. Create a local environment file named `.env` in this directory (`OneSpace-Services`). Do **not** commit this file to Git.
    ```env
    PORT=5000
    MONGO_URI=mongodb+srv://MrFoxDB:MrFoxDB@mrfox-db.fyatkdt.mongodb.net/PDashDB?retryWrites=true&w=majority&appName=MrFox-DB

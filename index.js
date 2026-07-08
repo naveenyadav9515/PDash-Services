@@ -7,7 +7,7 @@ const PORT = config.port;
 
 // Start Server
 const server = app.listen(PORT, async () => {
-  logger.info(`🚀 PDash-Services running in ${config.env} mode on port ${PORT}`);
+  logger.info(`🚀 OneSpace-Services running in ${config.env} mode on port ${PORT}`);
   
   // Connect to DB after server is listening
   await connectDB();

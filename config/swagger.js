@@ -5,9 +5,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'P-Dash Microservices API',
+      title: 'OneSpace Microservices API',
       version: '1.0.0',
-      description: 'API Documentation for the P-Dash Backend System',
+      description: 'API Documentation for the OneSpace Backend System',
       contact: {
         name: 'API Support',
         email: 'admin@pdash.com',
