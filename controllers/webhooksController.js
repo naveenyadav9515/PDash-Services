@@ -475,7 +475,7 @@ const activateGmailWatch = async (user) => {
     requestBody: {
       labelIds: ['INBOX'],
       labelFilterAction: 'include',
-      topicName: 'projects/onespace-1997/topics/gmail-expenses-topic'
+      topicName: `projects/${process.env.GCP_PROJECT_ID || 'onespace26'}/topics/gmail-expenses-topic`
     }
   });
 };
