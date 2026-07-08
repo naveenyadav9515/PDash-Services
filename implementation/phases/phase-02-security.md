@@ -60,7 +60,7 @@
 ## Epic 2.6: Google OAuth Verification
 
 ### Feature 2.6.1: Backend Token Verification
-- [x] **Completed** - Implement Node.js endpoint `/api/auth/google` on `OneSpace-Services`
+- [x] **Completed** - Implement Node.js endpoint `/api/auth/google` on `OneSpaceServices`
 - [x] **Completed** - Verify the Google ID Token payload using `google-auth-library`
 - [x] **Completed** - If user exists, log them in. If not, auto-register them using their Google Email/Name.
 - [x] **Completed** - Return our standard local JWT token so the frontend session management stays unified.

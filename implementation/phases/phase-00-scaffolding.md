@@ -7,7 +7,7 @@
 ## Epic 0.1: Project Initialization
 
 ### Feature 0.1.1: Package & Dependencies Setup
-- [x] **Completed** - Initialize Node.js project with `npm init` (name: onespace-services, version: 1.0.0)
+- [x] **Completed** - Initialize Node.js project with `npm init` (name: OneSpaceServices, version: 1.0.0)
 - [x] **Completed** - Install production dependencies: `express`, `mongoose`, `dotenv`, `cors`, `helmet`, `compression`, `winston`, `morgan`, `bcrypt`, `jsonwebtoken`
 - [x] **Completed** - Install dev dependencies: `nodemon`, `eslint`, `prettier`, `jest`, `supertest`, `mongodb-memory-server`
 - [x] **Completed** - Configure `package.json` scripts: `start`, `dev`, `test`, `test:coverage`, `lint`, `seed`
