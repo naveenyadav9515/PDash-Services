@@ -423,7 +423,7 @@ const handleGmailPushNotification = async (req, res, next) => {
   try {
     if (
       config.app.pubsubVerificationToken &&
-      req.get('x-pdash-webhook-token') !== config.app.pubsubVerificationToken &&
+      req.get('x-onespace-webhook-token') !== config.app.pubsubVerificationToken &&
       req.query.token !== config.app.pubsubVerificationToken
     ) {
       return res.status(401).send('Unauthorized');
@@ -475,7 +475,7 @@ const activateGmailWatch = async (user) => {
     requestBody: {
       labelIds: ['INBOX'],
       labelFilterAction: 'include',
-      topicName: 'projects/pdash-1997/topics/gmail-expenses-topic'
+      topicName: 'projects/onespace-1997/topics/gmail-expenses-topic'
     }
   });
 };

@@ -23,7 +23,7 @@ module.exports = {
   },
   
   cors: {
-    // Parse comma-separated string into array (e.g. "http://localhost:4200,https://pdash.com")
+    // Parse comma-separated string into array (e.g. "http://localhost:4200,https://onespace.com")
     origins: process.env.ALLOWED_ORIGINS 
       ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) 
       : '*',

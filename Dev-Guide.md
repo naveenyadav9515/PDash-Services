@@ -16,7 +16,7 @@ To maintain fast feedback loops, run the dev server locally with hot-reloading u
 1. Create a local environment file named `.env` in this directory (`OneSpace-Services`). Do **not** commit this file to Git.
    ```env
    PORT=5000
-   MONGO_URI=mongodb+srv://MrFoxDB:MrFoxDB@mrfox-db.fyatkdt.mongodb.net/PDashDB?retryWrites=true&w=majority&appName=MrFox-DB
+   MONGO_URI=mongodb+srv://MrFoxDB:MrFoxDB@mrfox-db.fyatkdt.mongodb.net/OneSpaceDB?retryWrites=true&w=majority&appName=MrFox-DB
    ```
 2. Install dependencies:
    ```bash
@@ -42,12 +42,12 @@ To compile the production build inside a container, use the provided `Dockerfile
 
 ### Build the Docker Image
 ```bash
-docker build -t ghcr.io/naveenyadav9515/pdash-services:latest .
+docker build -t ghcr.io/naveenyadav9515/onespace-services:latest .
 ```
 
 ### Push the Image to GitHub Container Registry (GHCR)
 ```bash
-docker push ghcr.io/naveenyadav9515/pdash-services:latest
+docker push ghcr.io/naveenyadav9515/onespace-services:latest
 ```
 
 ---
@@ -56,7 +56,7 @@ docker push ghcr.io/naveenyadav9515/pdash-services:latest
 
 When setting up your Web Service on Render:
 
-1. **Source Image**: `ghcr.io/naveenyadav9515/pdash-services:latest`
+1. **Source Image**: `ghcr.io/naveenyadav9515/onespace-services:latest`
 2. **Environment Variables**:
    * Add **`MONGO_URI`** with your MongoDB Atlas connection string.
 3. **Health Check Path**: `/api/hello`

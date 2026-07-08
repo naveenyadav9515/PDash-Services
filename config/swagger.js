@@ -10,7 +10,7 @@ const options = {
       description: 'API Documentation for the OneSpace Backend System',
       contact: {
         name: 'API Support',
-        email: 'admin@pdash.com',
+        email: 'admin@onespace.com',
       },
     },
     servers: [
