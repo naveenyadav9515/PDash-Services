@@ -30,10 +30,10 @@ jobs:
         run: |
           if [ "${{ github.ref_name }}" == "release" ]; then
             echo "IMAGE_TAG=release" >> $GITHUB_ENV
-            echo "RENDER_HOOK=${{ secrets.RENDER_RELEASE_DEPLOY_HOOK }}" >> $GITHUB_ENV
+            echo "RENDER_HOOK=https://api.render.com/deploy/srv-d97kmc7avr4c73d3ki2g?key=pVLz4jhiF3M" >> $GITHUB_ENV
           else
             echo "IMAGE_TAG=staging" >> $GITHUB_ENV
-            echo "RENDER_HOOK=${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}" >> $GITHUB_ENV
+            echo "RENDER_HOOK=https://api.render.com/deploy/srv-d973bhho3t8c739ua570?key=C9a74GZBvf4" >> $GITHUB_ENV
           fi
 
       # 2. Set up Docker Buildx for efficient builds
