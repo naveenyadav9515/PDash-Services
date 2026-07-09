@@ -1,4 +1,10 @@
-require('dotenv').config();
+const fs = require('fs');
+const secretEnvPath = '/etc/secrets/.env';
+if (fs.existsSync(secretEnvPath)) {
+  require('dotenv').config({ path: secretEnvPath });
+} else {
+  require('dotenv').config();
+}
 
 // Fail-fast validation for critical environment variables
 const requiredVariables = ['PORT', 'MONGO_URI', 'JWT_SECRET'];
