@@ -57,5 +57,7 @@ module.exports = {
     expenseMonthlyBudget: parseInt(process.env.EXPENSE_MONTHLY_BUDGET, 10) || 30000,
     gmailSyncLookbackDays: parseInt(process.env.GMAIL_SYNC_LOOKBACK_DAYS, 10) || 30,
     pubsubVerificationToken: process.env.PUBSUB_VERIFICATION_TOKEN || '',
+    pubsubTopic: process.env.GCP_PUBSUB_TOPIC || 'gmail-expenses-topic',
+    gcpProjectId: process.env.GCP_PROJECT_ID || 'onespace26',
   }
 };
