@@ -26,6 +26,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: t
 // Epic 2.1: Security Headers
 app.use(helmet({ 
   contentSecurityPolicy: false, 
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   xssFilter: true, 
   noSniff: true, 
   hsts: true, 
