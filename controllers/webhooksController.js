@@ -298,11 +298,6 @@ const syncRecentBankEmails = async (user) => {
         });
 
         if (alreadyProcessed) {
-          await gmail.users.messages.modify({
-            userId: 'me',
-            id: msg.id,
-            requestBody: { removeLabelIds: ['UNREAD'] }
-          });
           continue;
         }
 
@@ -319,11 +314,6 @@ const syncRecentBankEmails = async (user) => {
 
         // ── 3. Subject MUST contain "debited" — the single validation rule ──
         if (!isDebitSubject(subject)) {
-          await gmail.users.messages.modify({
-            userId: 'me',
-            id: msg.id,
-            requestBody: { removeLabelIds: ['UNREAD'] }
-          });
           continue;
         }
 
@@ -336,21 +326,11 @@ const syncRecentBankEmails = async (user) => {
         // Skip if we couldn't extract a valid amount
         if (extractedAmount <= 0) {
           console.warn(`[Expense Sync] Could not parse amount from email ${msg.id}. Skipping.`);
-          await gmail.users.messages.modify({
-            userId: 'me',
-            id: msg.id,
-            requestBody: { removeLabelIds: ['UNREAD'] }
-          });
           continue;
         }
 
         // Skip if parsed date falls before current month
         if (extractedDate < cutoffDate) {
-          await gmail.users.messages.modify({
-            userId: 'me',
-            id: msg.id,
-            requestBody: { removeLabelIds: ['UNREAD'] }
-          });
           continue;
         }
 
@@ -378,11 +358,6 @@ const syncRecentBankEmails = async (user) => {
 
         if (duplicateInHistory || duplicateInPending) {
           console.log(`[Expense Sync] Duplicate found (History/Pending): ₹${extractedAmount} to "${extractedMerchant}" at ${extractedDate.toISOString()}. Skipping.`);
-          await gmail.users.messages.modify({
-            userId: 'me',
-            id: msg.id,
-            requestBody: { removeLabelIds: ['UNREAD'] }
-          });
           continue;
         }
 
@@ -397,13 +372,6 @@ const syncRecentBankEmails = async (user) => {
           notes: `Auto-detected from email: "${subject.substring(0, 80)}"`,
           gmailMessageId: msg.id,
           source: 'gmail_auto'
-        });
-
-        // Mark email as read
-        await gmail.users.messages.modify({
-          userId: 'me',
-          id: msg.id,
-          requestBody: { removeLabelIds: ['UNREAD'] }
         });
       } catch (emailErr) {
         // Log individual email errors but continue processing remaining emails
