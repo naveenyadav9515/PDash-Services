@@ -46,6 +46,14 @@ const userSchema = new mongoose.Schema({
   expenseAutomationBanks: {
     type: [String],
     default: [],
+  },
+  gmailWatchExpiry: {
+    type: Date,
+    default: null,
+  },
+  gmailHistoryId: {
+    type: String,
+    default: null,
   }
 }, { timestamps: true });
 

@@ -204,12 +204,13 @@ exports.connectGmail = async (req, res, next) => {
       }, { new: true }).select('+googleRefreshToken');
       
       // Perform initial sync of recent emails!
-      const { syncRecentBankEmails, activateGmailWatch } = require('./webhooksController');
-      await syncRecentBankEmails(updatedUser);
+      const engine = require('../automation/engine');
+      await engine.processUserEmails(updatedUser);
       
       // Auto-subscribe the new user to Google Cloud Push Notifications
       try {
-        await activateGmailWatch(updatedUser);
+        const { activateWatch } = require('../automation/gmail/gmail-watch-manager');
+        await activateWatch(updatedUser);
         console.log(`[Gmail Setup] Successfully activated real-time push notifications for ${updatedUser.email}`);
       } catch (watchErr) {
         console.error(`[Gmail Setup] Failed to activate push notifications for ${updatedUser.email}:`, watchErr.message);

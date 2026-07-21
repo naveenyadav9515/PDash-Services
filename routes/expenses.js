@@ -13,6 +13,11 @@ router.post('/pending/simulate', expenseController.simulateAutoLog);
 router.post('/pending/:id', expenseController.processPendingTransaction);
 router.post('/sync', expenseController.syncExpenses);
 
+// Gmail Automation Settings
+router.get('/automation/status', expenseController.getAutomationStatus);
+router.patch('/automation/settings', expenseController.updateAutomationSettings);
+router.post('/automation/disconnect', expenseController.disconnectGmail);
+
 router.route('/')
   .post(expenseController.createExpense)
   .get(expenseController.getExpenses);

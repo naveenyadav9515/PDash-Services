@@ -67,6 +67,33 @@ const pendingTransactionSchema = new mongoose.Schema({
     type: String,
     enum: ['gmail_auto', 'manual', 'simulated'],
     default: 'manual',
+  },
+
+  // ── Bank & Parsing Metadata ──
+
+  /** Bank that sent the alert (e.g., 'Axis', 'HDFC') */
+  bank: {
+    type: String,
+    default: 'Unknown',
+  },
+
+  /** Transaction type extracted from email */
+  transactionType: {
+    type: String,
+    enum: ['Debit', 'Credit'],
+    default: 'Debit',
+  },
+
+  /** Whether the email was successfully parsed */
+  parsedSuccessfully: {
+    type: Boolean,
+    default: true,
+  },
+
+  /** Original email subject line for debugging */
+  rawSubject: {
+    type: String,
+    default: '',
   }
 }, {
   timestamps: true,

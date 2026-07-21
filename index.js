@@ -30,6 +30,30 @@ const server = app.listen(PORT, async () => {
     }, KEEP_ALIVE_INTERVAL_MS);
     logger.info(`♻️ Self keep-alive enabled (every 10 minutes) → ${selfUrl}`);
   }
+
+  // 📅 Gmail Watch Renewal: Google's users.watch expires after 7 days.
+  // We renew all active watches every 6 days, and also run it once on startup (after 5 seconds).
+  setTimeout(async () => {
+    try {
+      logger.info('📅 Running initial Gmail watch renewal check...');
+      const { renewAllWatches } = require('./automation/gmail/gmail-watch-manager');
+      await renewAllWatches();
+    } catch (err) {
+      logger.error('📅 Gmail watch renewal check failed:', err.message);
+    }
+  }, 5000);
+
+  const RENEWAL_INTERVAL_MS = 6 * 24 * 60 * 60 * 1000; // 6 days
+  setInterval(async () => {
+    try {
+      logger.info('📅 Starting scheduled Gmail watch renewal...');
+      const { renewAllWatches } = require('./automation/gmail/gmail-watch-manager');
+      await renewAllWatches();
+    } catch (err) {
+      logger.error('📅 Gmail watch renewal scheduler error:', err.message);
+    }
+  }, RENEWAL_INTERVAL_MS);
+  logger.info('📅 Scheduled Gmail watch renewal enabled (every 6 days)');
 });
 
 // Handle Unhandled Rejections (Safety Net)

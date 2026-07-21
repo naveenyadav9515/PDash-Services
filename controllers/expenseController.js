@@ -315,11 +315,138 @@ exports.syncExpenses = async (req, res, next) => {
     const user = await User.findById(req.user.id).select('+googleRefreshToken');
     
     if (user && user.gmailConnected && user.googleRefreshToken) {
-      const { syncRecentBankEmails } = require('./webhooksController');
-      await syncRecentBankEmails(user);
+      const engine = require('../automation/engine');
+      await engine.processUserEmails(user);
     }
     
     res.status(200).json({ status: 'success', message: 'Sync complete' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get current Gmail automation status
+ * @route   GET /api/expenses/automation/status
+ * @access  Private
+ */
+exports.getAutomationStatus = async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const { getSupportedBanks } = require('../automation/parsers/parser-registry');
+    
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        gmailConnected: user.gmailConnected,
+        expenseAutomationEnabled: user.expenseAutomationEnabled,
+        enabledBanks: user.expenseAutomationBanks || [],
+        supportedBanks: getSupportedBanks()
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update Gmail automation settings
+ * @route   PATCH /api/expenses/automation/settings
+ * @access  Private
+ */
+exports.updateAutomationSettings = async (req, res, next) => {
+  try {
+    const { expenseAutomationEnabled, enabledBanks } = req.body;
+    const User = require('../models/User');
+    
+    const updateData = {};
+    if (typeof expenseAutomationEnabled === 'boolean') {
+      updateData.expenseAutomationEnabled = expenseAutomationEnabled;
+    }
+    if (Array.isArray(enabledBanks)) {
+      updateData.expenseAutomationBanks = enabledBanks;
+    }
+
+    const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true });
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    // If watch activation is needed when enabling automation
+    if (user.gmailConnected && user.expenseAutomationEnabled) {
+      try {
+        const { activateWatch } = require('../automation/gmail/gmail-watch-manager');
+        await activateWatch(user);
+      } catch (watchErr) {
+        console.error(`[Gmail Setup] Failed to re-activate push notifications for ${user.email}:`, watchErr.message);
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Automation settings updated successfully',
+      data: {
+        gmailConnected: user.gmailConnected,
+        expenseAutomationEnabled: user.expenseAutomationEnabled,
+        enabledBanks: user.expenseAutomationBanks
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Disconnect Gmail integration
+ * @route   POST /api/expenses/automation/disconnect
+ * @access  Private
+ */
+exports.disconnectGmail = async (req, res, next) => {
+  try {
+    const User = require('../models/User');
+    const { OAuth2Client } = require('google-auth-library');
+    const { decryptSecret } = require('../utils/crypto.util');
+
+    const user = await User.findById(req.user.id).select('+googleRefreshToken');
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    // Try to revoke the token with Google
+    if (user.googleRefreshToken) {
+      try {
+        const refreshToken = decryptSecret(user.googleRefreshToken);
+        const oauth2Client = new OAuth2Client(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET
+        );
+        oauth2Client.setCredentials({ refresh_token: refreshToken });
+        await oauth2Client.revokeToken(refreshToken);
+        console.log(`[Gmail Disconnect] Revoked Google OAuth token for user ${user.email}`);
+      } catch (revokeErr) {
+        // Log but don't fail, we want to clear local credentials anyway
+        console.warn(`[Gmail Disconnect] Warning: Google OAuth token revoke failed:`, revokeErr.message);
+      }
+    }
+
+    // Clear Gmail credentials and disable automation in db
+    user.gmailConnected = false;
+    user.googleRefreshToken = undefined;
+    user.expenseAutomationEnabled = false;
+    user.expenseAutomationBanks = [];
+    user.gmailWatchExpiry = undefined;
+    user.gmailHistoryId = undefined;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Gmail disconnected successfully'
+    });
   } catch (error) {
     next(error);
   }
